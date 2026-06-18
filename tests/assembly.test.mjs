@@ -4,9 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
+  applyAssemblyEdit,
   assemblyToEdl,
   assemblyToMarkdown,
   buildAssembly,
+  makeBlock,
   parseAssemblyMarkdown,
 } from "../packages/assembly/index.mjs";
 
@@ -65,9 +67,9 @@ test("assembly exports traceable multi-source EDL", () => {
       part2: { path: "/tmp/part2.mp4" },
     },
     blocks: [
-      { id: "a", source: "part1", start: 0, end: 2, text: "A", status: "active" },
-      { id: "b", source: "part2", start: 3, end: 5, text: "B", status: "deleted" },
-      { id: "c", source: "part2", start: 5, end: 8, text: "C", status: "active" },
+      makeBlock({ id: "a", source: "part1", start: 0, end: 2, text: "A", status: "active" }),
+      makeBlock({ id: "b", source: "part2", start: 3, end: 5, text: "B", status: "deleted" }),
+      makeBlock({ id: "c", source: "part2", start: 5, end: 8, text: "C", status: "active" }),
     ],
   };
   const edl = assemblyToEdl(assembly);
@@ -77,27 +79,57 @@ test("assembly exports traceable multi-source EDL", () => {
 });
 
 test("assembly markdown rejects text edits", () => {
-  const assembly = {
-    blocks: [
-      {
-        id: "part1_001",
-        source: "part1",
-        start: 0,
-        end: 2,
-        text: "原文",
-        status: "active",
-        hash: "placeholder",
-      },
-    ],
-  };
-  const block = {
+  const block = makeBlock({
     id: "part1_001",
     source: "part1",
     start: 0,
     end: 2,
     text: "原文",
     status: "active",
-  };
-  const md = assemblyToMarkdown({ ...assembly, blocks: [block] });
+  });
+  const md = assemblyToMarkdown({ blocks: [block] });
+  assert.equal(parseAssemblyMarkdown(md)[0].text, "原文");
   assert.throws(() => parseAssemblyMarkdown(md.replace("原文", "改写")), /changed/);
+});
+
+test("assembly JSON edits allow reorder/delete but reject immutable changes", () => {
+  const a = makeBlock({
+    id: "part1_001",
+    source: "part1",
+    start: 0,
+    end: 2,
+    text: "第一块",
+    status: "active",
+  });
+  const b = makeBlock({
+    id: "part2_001",
+    source: "part2",
+    start: 3,
+    end: 5,
+    text: "第二块",
+    status: "active",
+  });
+  const base = {
+    sources: {
+      part1: { path: "/tmp/part1.mp4" },
+      part2: { path: "/tmp/part2.mp4" },
+    },
+    blocks: [a, b],
+  };
+
+  const edited = applyAssemblyEdit(base, {
+    ...base,
+    blocks: [{ ...b, status: "deleted" }, a],
+  });
+  assert.deepEqual(edited.blocks.map((block) => block.id), ["part2_001", "part1_001"]);
+  assert.equal(edited.blocks[0].status, "deleted");
+
+  assert.throws(
+    () => applyAssemblyEdit(base, { ...base, blocks: [{ ...a, text: "改写" }, b] }),
+    /immutable field: text/,
+  );
+  assert.throws(
+    () => applyAssemblyEdit(base, { ...base, blocks: [{ ...a, start: 1 }, b] }),
+    /immutable field: start/,
+  );
 });

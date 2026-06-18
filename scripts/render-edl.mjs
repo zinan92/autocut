@@ -44,15 +44,43 @@ const probes = Object.fromEntries(
   [...sourceIds].map((sourceId) => [sourceId, probeMedia(sources[sourceId])]),
 );
 const firstProbe = probes[[...sourceIds][0]];
+const fpsTolerance = 0.5;
 for (const [sourceId, probe] of Object.entries(probes)) {
   if (probe.orientation !== firstProbe.orientation || probe.width !== firstProbe.width || probe.height !== firstProbe.height) {
     throw new Error(
       `Source geometry mismatch for ${sourceId}: ${probe.width}x${probe.height} ${probe.orientation}, expected ${firstProbe.width}x${firstProbe.height} ${firstProbe.orientation}`,
     );
   }
+  if (!Number.isFinite(probe.fpsNumber) || !Number.isFinite(firstProbe.fpsNumber)) {
+    throw new Error(`Could not determine source FPS for ${sourceId}`);
+  }
+  if (Math.abs(probe.fpsNumber - firstProbe.fpsNumber) > fpsTolerance) {
+    throw new Error(
+      `Source FPS mismatch for ${sourceId}: ${probe.fps ?? probe.fpsNumber}, expected ${firstProbe.fps ?? firstProbe.fpsNumber}`,
+    );
+  }
+  if (!probe.audio) {
+    throw new Error(`Source has no audio stream: ${sourceId}`);
+  }
+}
+
+for (const range of ranges) {
+  const sourceId = range.source ?? "main";
+  const probe = probes[sourceId];
+  const start = Number(range.start);
+  const end = Number(range.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    throw new Error(`Invalid EDL range: ${JSON.stringify(range)}`);
+  }
+  if (start < -0.001 || end > probe.duration + 0.15) {
+    throw new Error(
+      `Range ${range.id ?? range.blockId ?? "(unknown)"} exceeds source ${sourceId}: ${start}-${end}s, duration ${probe.duration}s`,
+    );
+  }
 }
 
 run("mkdir", ["-p", dirname(resolve(outPath))]);
+const targetFps = firstProbe.fps ?? String(firstProbe.fpsNumber);
 
 if ((edl.deleteSegments ?? []).length === 0 && ranges.length === 1 && sourceIds.size === 1) {
   const range = ranges[0];
@@ -62,18 +90,38 @@ if ((edl.deleteSegments ?? []).length === 0 && ranges.length === 1 && sourceIds.
   if (!isWholeSource) {
     // Fall through to extraction for partial single-source ranges.
   } else {
-  run("ffmpeg", [
-    "-y",
-    "-i",
-    sourceVideo,
-    "-c",
-    "copy",
-    "-movflags",
-    "+faststart",
-    resolve(outPath),
-  ], { stdio: "inherit" });
-  console.log(`No cuts. Copied source to: ${resolve(outPath)}`);
-  process.exit(0);
+    run("ffmpeg", [
+      "-y",
+      "-i",
+      sourceVideo,
+      "-vf",
+      "setsar=1,format=yuv420p",
+      "-r",
+      targetFps,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "fast",
+      "-crf",
+      "20",
+      "-pix_fmt",
+      "yuv420p",
+      "-af",
+      "aresample=48000",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-ar",
+      "48000",
+      "-ac",
+      "2",
+      "-movflags",
+      "+faststart",
+      resolve(outPath),
+    ], { stdio: "inherit" });
+    console.log(`No cuts. Re-encoded source to: ${resolve(outPath)}`);
+    process.exit(0);
   }
 }
 
@@ -98,8 +146,10 @@ for (let i = 0; i < ranges.length; i += 1) {
     duration.toFixed(3),
     "-vf",
     "setsar=1,format=yuv420p",
+    "-r",
+    targetFps,
     "-af",
-    `afade=t=in:st=0:d=0.03,afade=t=out:st=${fadeOutStart.toFixed(3)}:d=0.03`,
+    `aresample=48000,afade=t=in:st=0:d=0.03,afade=t=out:st=${fadeOutStart.toFixed(3)}:d=0.03`,
     "-c:v",
     "libx264",
     "-preset",
@@ -114,6 +164,8 @@ for (let i = 0; i < ranges.length; i += 1) {
     "192k",
     "-ar",
     "48000",
+    "-ac",
+    "2",
     "-movflags",
     "+faststart",
     partPath,

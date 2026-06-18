@@ -328,6 +328,7 @@ export const parseAssemblyMarkdown = (markdown) => {
 };
 
 export const assemblyToEdl = (assembly) => {
+  assertAssemblyIntegrity(assembly);
   const ranges = assembly.blocks
     .filter((block) => block.status !== "deleted")
     .map((block, index) => ({
@@ -359,7 +360,110 @@ export const assemblyToEdl = (assembly) => {
   };
 };
 
+const allowedStatuses = new Set(["active", "deleted"]);
+
+export const assertAssemblyIntegrity = (assembly) => {
+  if (!assembly || typeof assembly !== "object") {
+    throw new Error("Assembly must be an object");
+  }
+  if (!assembly.sources || typeof assembly.sources !== "object") {
+    throw new Error("Assembly must include sources");
+  }
+  if (!Array.isArray(assembly.blocks) || assembly.blocks.length === 0) {
+    throw new Error("Assembly must include blocks");
+  }
+
+  const seen = new Set();
+  for (const block of assembly.blocks) {
+    if (!block?.id) throw new Error("Assembly block is missing id");
+    if (seen.has(block.id)) throw new Error(`Duplicate assembly block id: ${block.id}`);
+    seen.add(block.id);
+    if (!assembly.sources[block.source]) {
+      throw new Error(`Block ${block.id} references unknown source: ${block.source}`);
+    }
+    if (!allowedStatuses.has(block.status)) {
+      throw new Error(`Block ${block.id} has invalid status: ${block.status}`);
+    }
+    const expected = makeBlock({
+      id: block.id,
+      source: block.source,
+      start: block.start,
+      end: block.end,
+      text: block.text,
+      status: block.status,
+      group: block.group ?? null,
+    });
+    if (expected.hash !== block.hash) {
+      throw new Error(`Block text or metadata changed for ${block.id}; hash does not match`);
+    }
+  }
+
+  return true;
+};
+
+const sortJsonValue = (value) => {
+  if (Array.isArray(value)) return value.map(sortJsonValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, sortJsonValue(value[key])]),
+  );
+};
+
+const stableSource = (source) => JSON.stringify(sortJsonValue(source ?? {}));
+
+export const applyAssemblyEdit = (baseAssembly, proposedAssembly) => {
+  assertAssemblyIntegrity(baseAssembly);
+  if (!proposedAssembly || typeof proposedAssembly !== "object") {
+    throw new Error("Proposed assembly must be an object");
+  }
+  if (stableSource(baseAssembly.sources) !== stableSource(proposedAssembly.sources)) {
+    throw new Error("Assembly sources cannot be edited in V1");
+  }
+  if (!Array.isArray(proposedAssembly.blocks)) {
+    throw new Error("Proposed assembly must include blocks");
+  }
+
+  const originalById = new Map(baseAssembly.blocks.map((block) => [block.id, block]));
+  const seen = new Set();
+  const nextBlocks = proposedAssembly.blocks.map((block) => {
+    const original = originalById.get(block.id);
+    if (!original) throw new Error(`Unknown block in proposed assembly: ${block.id}`);
+    if (seen.has(block.id)) throw new Error(`Duplicate block in proposed assembly: ${block.id}`);
+    seen.add(block.id);
+
+    const status = block.status ?? original.status;
+    if (!allowedStatuses.has(status)) {
+      throw new Error(`Block ${block.id} has invalid status: ${status}`);
+    }
+
+    const immutableFields = ["source", "start", "end", "text", "hash", "group"];
+    for (const field of immutableFields) {
+      const proposed = field === "group" ? (block.group ?? null) : block[field];
+      const expected = field === "group" ? (original.group ?? null) : original[field];
+      if (proposed !== expected) {
+        throw new Error(`Block ${block.id} changed immutable field: ${field}`);
+      }
+    }
+
+    return { ...original, status };
+  });
+
+  if (seen.size !== originalById.size) {
+    const missing = [...originalById.keys()].filter((id) => !seen.has(id));
+    throw new Error(`Proposed assembly is missing blocks: ${missing.join(", ")}`);
+  }
+
+  return {
+    ...baseAssembly,
+    blocks: nextBlocks,
+    updatedAt: new Date().toISOString(),
+  };
+};
+
 export const mergeAssemblyWithMarkdownOrder = (assembly, markdown) => {
+  assertAssemblyIntegrity(assembly);
   const parsedBlocks = parseAssemblyMarkdown(markdown);
   const known = new Map(assembly.blocks.map((block) => [block.id, block]));
   const ordered = parsedBlocks.map((block) => {

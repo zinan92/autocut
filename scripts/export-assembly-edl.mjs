@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   assemblyToEdl,
+  assertAssemblyIntegrity,
   mergeAssemblyWithMarkdownOrder,
 } from "../packages/assembly/index.mjs";
 import { readJson, requireFile, writeJson } from "../packages/shared/json.mjs";
@@ -14,6 +15,7 @@ const outPath = resolve(args.out ?? "remotion-host-overlay-work/assembly/edl.jso
 const markdownPath = args.markdown ? resolve(args.markdown) : null;
 
 let assembly = readJson(requireFile(assemblyPath, "assembly"));
+assertAssemblyIntegrity(assembly);
 
 if (markdownPath) {
   if (!existsSync(markdownPath)) {

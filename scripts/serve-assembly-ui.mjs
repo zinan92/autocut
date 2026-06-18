@@ -2,7 +2,11 @@
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
-import { assemblyToEdl } from "../packages/assembly/index.mjs";
+import {
+  applyAssemblyEdit,
+  assemblyToEdl,
+  assertAssemblyIntegrity,
+} from "../packages/assembly/index.mjs";
 import { readJson, requireFile, writeJson } from "../packages/shared/json.mjs";
 import { parseArgs } from "./args.mjs";
 
@@ -13,6 +17,7 @@ const port = Number(args.port ?? 8898);
 const uiDir = resolve("assembly-ui");
 
 requireFile(assemblyPath, "assembly");
+assertAssemblyIntegrity(readJson(assemblyPath));
 
 const mime = {
   ".html": "text/html; charset=utf-8",
@@ -88,13 +93,17 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === "/api/assembly" && req.method === "POST") {
-      const assembly = JSON.parse(await readBody(req));
+      const baseAssembly = readJson(assemblyPath);
+      const proposedAssembly = JSON.parse(await readBody(req));
+      const assembly = applyAssemblyEdit(baseAssembly, proposedAssembly);
       writeJson(assemblyPath, assembly);
       return sendJson(res, 200, { ok: true, path: assemblyPath });
     }
 
     if (url.pathname === "/api/export" && req.method === "POST") {
-      const assembly = JSON.parse(await readBody(req));
+      const baseAssembly = readJson(assemblyPath);
+      const proposedAssembly = JSON.parse(await readBody(req));
+      const assembly = applyAssemblyEdit(baseAssembly, proposedAssembly);
       writeJson(assemblyPath, assembly);
       const edl = assemblyToEdl(assembly);
       writeJson(edlPath, edl);

@@ -21,8 +21,17 @@ const edl = edlPath ? readJson(requireFile(edlPath, "EDL")) : null;
 const firstSourcePath = sourceVideo ?? Object.values(edl.sources ?? {})[0];
 const sourceProbe = probeMedia(typeof firstSourcePath === "string" ? firstSourcePath : firstSourcePath.path);
 const outputProbe = probeMedia(outputVideo);
-const baseReport = scoreRender({ sourceProbe, outputProbe });
+const expectedDimensions = edl
+  ? { width: sourceProbe.width, height: sourceProbe.height }
+  : undefined;
+const baseReport = scoreRender({
+  sourceProbe,
+  outputProbe,
+  outputPath: outputVideo,
+  expectedDimensions,
+});
 const warnings = [...baseReport.warnings];
+const failures = [...baseReport.failures];
 
 let edlChecks = null;
 if (edl) {
@@ -37,13 +46,13 @@ if (edl) {
   const cutFadeMs = edl.rules?.cutBoundaryFadeMs ?? 30;
 
   if (durationDelta > 0.5) {
-    warnings.push(`Output duration differs from EDL by ${durationDelta.toFixed(2)}s`);
+    failures.push(`Output duration differs from EDL by ${durationDelta.toFixed(2)}s`);
   }
   if (!traceOk) {
-    warnings.push("One or more EDL ranges are not traceable to source/start/end.");
+    failures.push("One or more EDL ranges are not traceable to source/start/end.");
   }
   if (cutFadeMs < 30) {
-    warnings.push("EDL cut fade is under 30ms.");
+    failures.push("EDL cut fade is under 30ms.");
   }
 
   edlChecks = {
@@ -61,8 +70,9 @@ const report = {
   source: sourceProbe,
   output: outputProbe,
   ...baseReport,
+  failures,
   warnings,
-  status: warnings.length === 0 ? "pass" : "review",
+  status: failures.length > 0 ? "fail" : warnings.length === 0 ? "pass" : "review",
   edl: edlChecks,
   platform: {
     telegram: telegramMetadata({
@@ -77,6 +87,12 @@ writeJson(outPath, report);
 console.log(`QA report written: ${resolve(outPath)}`);
 console.log(`Status: ${report.status}`);
 console.log(`Geometry score: ${report.scores.geometry}`);
+if (report.failures.length) {
+  console.error(`Failures: ${report.failures.join(" | ")}`);
+}
 if (report.warnings.length) {
   console.log(`Warnings: ${report.warnings.join(" | ")}`);
+}
+if (report.status === "fail") {
+  process.exit(1);
 }
