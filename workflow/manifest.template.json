@@ -1,0 +1,134 @@
+{
+  "projectName": "host-overlay-example",
+  "sourceVideo": "/path/to/source-video.mp4",
+  "transcriptPath": "remotion-host-overlay-work/transcript/source.json",
+  "outputOrientation": "auto",
+  "stylePreset": "host-overlay",
+  "storyboardPath": "remotion-host-overlay-demo/src/storyboard.json",
+  "autocut": {
+    "enabled": true,
+    "silenceThresholdSec": 0.5,
+    "fillerMode": "mark",
+    "requiresReview": true
+  },
+  "editPlan": {
+    "strategyConfirmationRequired": true,
+    "preserveOriginalOrder": true,
+    "destructiveCutsRequireReview": true
+  },
+  "lengthPolicy": {
+    "defaultRangeMinutes": "5-10",
+    "singleCompositionMaxMinutes": 10,
+    "segmentLengthSeconds": 60,
+    "maxSegmentLengthSeconds": 120,
+    "visualBeatEverySeconds": 20
+  },
+  "render": {
+    "codec": "h264",
+    "crf": 18,
+    "concurrency": 2
+  },
+  "delivery": {
+    "crf": 18,
+    "preset": "medium",
+    "audioBitrate": "192k",
+    "telegramRequiresExplicitMetadata": true
+  },
+  "attentionPolicy": {
+    "maxActivePrimaryAnimation": 1,
+    "allowPersistentPassiveContext": true,
+    "rule": "Only one primary visual region should update at a time. Previous concept animations should freeze, dim, or fade out when the next concept appears."
+  },
+  "audio": {
+    "sfxMode": "remotion-assets",
+    "backgroundMusic": {
+      "enabled": false,
+      "path": "public/music/background.mp3",
+      "volume": 0.06,
+      "duckUnderSpeech": true
+    },
+    "sfx": [
+      {
+        "name": "phase-hit",
+        "path": "public/sfx/phase-hit.wav",
+        "usage": "major phase start",
+        "volume": 0.18
+      },
+      {
+        "name": "soft-whoosh",
+        "path": "public/sfx/soft-whoosh.wav",
+        "usage": "single primary visual transition",
+        "volume": 0.12
+      },
+      {
+        "name": "tick",
+        "path": "public/sfx/tick.wav",
+        "usage": "small emphasis",
+        "volume": 0.12
+      }
+    ]
+  },
+  "content": {
+    "language": "zh-CN",
+    "topic": "努力、业力、愿力",
+    "summary": "用船、水流、风解释努力、业力和愿力的关系。",
+    "chapters": ["概念", "努力", "业力", "愿力"],
+    "phases": [
+      {
+        "start": 0,
+        "end": 11,
+        "kicker": "THE MODEL",
+        "title": "三种力量",
+        "accent": "#2f8dff",
+        "stat": "3",
+        "statLabel": "FORCES",
+        "detail": "EFFORT · KARMA · WILL"
+      },
+      {
+        "start": 11,
+        "end": 16,
+        "kicker": "EFFORT VS CURRENT",
+        "title": "努力是划船",
+        "accent": "#ffbd36",
+        "stat": "01",
+        "statLabel": "ROW",
+        "detail": "动作很强，但方向未必对"
+      },
+      {
+        "start": 16,
+        "end": 45,
+        "kicker": "KARMA FIELD",
+        "title": "业力是水流",
+        "accent": "#ff4d4d",
+        "stat": "02",
+        "statLabel": "CURRENT",
+        "detail": "习惯和命，会持续推着你走"
+      },
+      {
+        "start": 45,
+        "end": 63.3,
+        "kicker": "WILL POWER",
+        "title": "愿力是风",
+        "accent": "#50e38a",
+        "stat": "03",
+        "statLabel": "WIND",
+        "detail": "足够强时，可以改变水流方向"
+      }
+    ]
+  },
+  "skillBoard": [
+    ["remotion-core", "透明叠层约束 / 4K 缩放架构 / Phase 索引"],
+    ["remotion-motion-design", "House Style / 6 种架构 / 横版人脸安全区"],
+    ["remotion-apple-keynote-style", "Keynote 大数字 / 重点句 / 配色规范"],
+    ["remotion-asset-gathering", "素材抓取 / transcript / still QA"],
+    ["remotion-asset-usage", "SafeVideo / blurred bg / focus"],
+    ["remotion-long-video-assembly", "Master Sequence / gap 节奏"],
+    ["remotion-sfx-system", "impact / whoosh / tick"],
+    ["remotion-4k-export", "CRF / concurrency / ffprobe"],
+    ["cover-title", "封面 brief / 主题词 / 不重复关键词"]
+  ],
+  "qa": {
+    "stillFrames": [120, 480, 1020, 1620],
+    "openAfterRender": true
+  }
+}

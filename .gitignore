@@ -1,0 +1,41 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+
+node_modules/
+remotion-host-overlay-demo/node_modules/
+
+# Generated video/audio artifacts
+*.mp4
+*.mov
+*.m4v
+*.avi
+*.mkv
+*.webm
+*.wav
+*.mp3
+*.m4a
+*.aac
+
+# Work outputs
+remotion-host-overlay-work/
+remotion-host-overlay-work/renders/
+remotion-host-overlay-work/sessions/
+remotion-host-overlay-work/assembly*/
+remotion-host-overlay-work/edit/
+remotion-host-overlay-work/transcripts/
+remotion-host-overlay-work/transcript/
+remotion-host-overlay-work/audio/
+remotion-host-overlay-work/assets/
+
+# Local workflow config; commit workflow/manifest.template.json instead
+workflow/manifest.json
+
+# ASR/model caches
+.venv-mlx-whisper/
+.cache/
+__pycache__/
+
+# Local review server/cache output
+review-output/

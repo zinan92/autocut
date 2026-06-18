@@ -1,0 +1,166 @@
+{
+  "video": {
+    "duration": 63.3,
+    "chapters": ["概念", "努力", "业力", "愿力"]
+  },
+  "captions": [
+    {
+      "start": 0,
+      "end": 4,
+      "zh": "今天想讲一个概念：业力、愿力和努力",
+      "en": "Karma, will, and effort."
+    },
+    {
+      "start": 4,
+      "end": 11,
+      "zh": "我看到一篇小红书文章，它用了一个很好的 analogy",
+      "en": "A simple analogy made the idea click."
+    },
+    {
+      "start": 11,
+      "end": 16,
+      "zh": "努力，就像你不停地用船桨去划船",
+      "en": "Effort is rowing harder."
+    },
+    {
+      "start": 16,
+      "end": 23,
+      "zh": "业力，就是船下面水流的方向",
+      "en": "Karma is the current under the boat."
+    },
+    {
+      "start": 23,
+      "end": 28,
+      "zh": "如果水流和你相反，其实怎么划都没有用",
+      "en": "If the current runs against you, effort leaks away."
+    },
+    {
+      "start": 28,
+      "end": 34,
+      "zh": "业力通常由我们的习惯构成，也就是所谓的命",
+      "en": "Karma is built from habit. What we call fate."
+    },
+    {
+      "start": 34,
+      "end": 42,
+      "zh": "命本身会推动你，影响你往哪里走",
+      "en": "It keeps pushing the direction you drift."
+    },
+    {
+      "start": 42,
+      "end": 49,
+      "zh": "后来我又看到：努力、业力和愿力",
+      "en": "Then comes the third force: will."
+    },
+    {
+      "start": 49,
+      "end": 57,
+      "zh": "愿力是最高级的，它相当于是风",
+      "en": "Will is the wind above the water."
+    },
+    {
+      "start": 57,
+      "end": 63.3,
+      "zh": "如果你有极强的愿力，你是能够逆天改命的",
+      "en": "Strong will can change the current."
+    }
+  ],
+  "phases": [
+    {
+      "start": 0,
+      "end": 11,
+      "kicker": "THE MODEL",
+      "title": "三种力量",
+      "accent": "#2f8dff",
+      "stat": "3",
+      "statLabel": "FORCES",
+      "detail": "EFFORT · KARMA · WILL"
+    },
+    {
+      "start": 11,
+      "end": 16,
+      "kicker": "EFFORT VS CURRENT",
+      "title": "努力是划船",
+      "accent": "#ffbd36",
+      "stat": "01",
+      "statLabel": "ROW",
+      "detail": "动作很强，但方向未必对"
+    },
+    {
+      "start": 16,
+      "end": 45,
+      "kicker": "KARMA FIELD",
+      "title": "业力是水流",
+      "accent": "#ff4d4d",
+      "stat": "02",
+      "statLabel": "CURRENT",
+      "detail": "习惯和命，会持续推着你走"
+    },
+    {
+      "start": 45,
+      "end": 63.3,
+      "kicker": "WILL POWER",
+      "title": "愿力是风",
+      "accent": "#50e38a",
+      "stat": "03",
+      "statLabel": "WIND",
+      "detail": "足够强时，可以改变水流方向"
+    }
+  ],
+  "shortSkillBoard": [
+    ["remotion-core", "透明叠层 / 双画幅 / phase 时间轴"],
+    ["remotion-motion-design", "House style / 大数字 / spring pop"],
+    ["remotion-asset-usage", "Host video / blurred bg / safe captions"],
+    ["remotion-sfx-system", "phase hit / whoosh / tick"],
+    ["cover-title", "封面帧 / 主题词 / 一眼看懂"]
+  ],
+  "referenceSkillBoard": [
+    ["remotion-core", "透明叠层约束 / 4K 缩放架构 / Phase 索引"],
+    ["remotion-motion-design", "House Style / 6 种架构 / 横版人脸安全区"],
+    ["remotion-apple-keynote-style", "Keynote 大数字 / 重点句 / 配色规范"],
+    ["remotion-asset-gathering", "素材抓取 / transcript / still QA"],
+    ["remotion-asset-usage", "SafeVideo / blurred bg / focus"],
+    ["remotion-long-video-assembly", "Master Sequence / gap 节奏"],
+    ["remotion-sfx-system", "impact / whoosh / tick"],
+    ["remotion-4k-export", "CRF / concurrency / ffprobe"],
+    ["cover-title", "封面 brief / 主题词 / 不重复关键词"]
+  ],
+  "attentionTimeline": [
+    {
+      "id": "skill-board",
+      "start": 0,
+      "end": 12,
+      "primary": "skillBoard",
+      "after": "fadeOut"
+    },
+    {
+      "id": "effort",
+      "start": 11,
+      "end": 16,
+      "primary": "storyPanel",
+      "after": "dim"
+    },
+    {
+      "id": "karma",
+      "start": 16,
+      "end": 45,
+      "primary": "statBlock",
+      "after": "dim"
+    },
+    {
+      "id": "will",
+      "start": 45,
+      "end": 63.3,
+      "primary": "sideCards",
+      "after": "hold"
+    }
+  ],
+  "longVideoPolicy": {
+    "targetLengthMinutes": "5-10",
+    "segmentLengthSeconds": 60,
+    "maxSegmentLengthSeconds": 120,
+    "maxActivePrimaryAnimation": 1,
+    "visualBeatEverySeconds": 20,
+    "qaFramesPerSegment": 3
+  }
+}

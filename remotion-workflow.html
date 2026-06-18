@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remotion Host Overlay Workflow</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #141923;
+      --muted: #657083;
+      --line: #dce3ee;
+      --det: #087667;
+      --det-soft: #e8f6f2;
+      --ai: #a8550d;
+      --ai-soft: #fff2df;
+      --state: #1d4ed8;
+      --state-soft: #e9f0ff;
+      --ext: #46535f;
+      --ext-soft: #eef2f4;
+      --risk: #b42318;
+      --risk-soft: #fff0ed;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #edf5ff 0, var(--bg) 390px);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.55;
+    }
+    main {
+      width: min(1180px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 36px 0 68px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 22px;
+      align-items: end;
+      border-bottom: 1px solid rgba(20, 25, 35, 0.14);
+      padding-bottom: 24px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 38px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 30px 0 12px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+    p { margin: 0; color: #344054; }
+    ul { margin: 8px 0 0; padding-left: 18px; color: #344054; }
+    li { margin: 3px 0; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+      background: #f4f7fb;
+      border: 1px solid #e0e7f0;
+      border-radius: 5px;
+      padding: 1px 5px;
+    }
+    pre {
+      margin: 10px 0 0;
+      padding: 12px;
+      overflow: auto;
+      border-radius: 8px;
+      border: 1px solid #d8e2ef;
+      background: #f8fbff;
+      color: #243042;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 10px 26px rgba(16, 24, 40, 0.045);
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e7edf5;
+      font-size: 13px;
+    }
+    th { background: #eef4fb; color: #263244; font-weight: 900; }
+    tr:last-child td { border-bottom: 0; }
+    .lede {
+      max-width: 790px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .legend {
+      display: grid;
+      gap: 8px;
+    }
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.78);
+      padding: 8px 10px;
+      color: #334155;
+      font-size: 13px;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .dot.det { background: var(--det); }
+    .dot.ai { background: var(--ai); }
+    .dot.state { background: var(--state); }
+    .dot.ext { background: var(--ext); }
+    .card, .stage, .note {
+      background: var(--panel);
+      border: 1px solid rgba(151, 162, 178, 0.34);
+      border-radius: 8px;
+      box-shadow: 0 10px 26px rgba(16, 24, 40, 0.05);
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .card { padding: 16px; }
+    .card.det { border-left: 5px solid var(--det); }
+    .card.ai { border-left: 5px solid var(--ai); }
+    .card.state { border-left: 5px solid var(--state); }
+    .card.ext { border-left: 5px solid var(--ext); }
+    .tag, .type {
+      display: inline-flex;
+      white-space: nowrap;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid currentColor;
+    }
+    .tag { margin-bottom: 9px; }
+    .det { color: var(--det); background: var(--det-soft); }
+    .ai { color: var(--ai); background: var(--ai-soft); }
+    .state { color: var(--state); background: var(--state-soft); }
+    .ext { color: var(--ext); background: var(--ext-soft); }
+    .risk { color: var(--risk); background: var(--risk-soft); }
+    .stages {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .stage {
+      display: grid;
+      grid-template-columns: 156px minmax(0, 1fr) 285px;
+      gap: 16px;
+      padding: 16px;
+      align-items: start;
+    }
+    .stage-name {
+      color: var(--state);
+      font-weight: 900;
+      font-size: 15px;
+    }
+    .stage-kind {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+    .io {
+      background: #f7faff;
+      border: 1px solid #e0e8f4;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 13px;
+      color: #41516a;
+    }
+    .note {
+      padding: 16px;
+      margin-top: 12px;
+      border-left: 5px solid var(--state);
+    }
+    .footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 900px) {
+      header, .stage { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Remotion Host Overlay Workflow</h1>
+      <p class="lede">这张图描述可复用的视频生产线：从一个 talking-head 源视频，经过转写、AI storyboard、orientation routing、Remotion render、截图 QA、handoff，得到透明 Remotion 图层风格成片。默认规则：竖屏输入产出竖屏，横屏输入产出横屏。</p>
+    </div>
+    <div class="legend">
+      <div class="chip"><span class="dot det"></span>Deterministic：脚本规则流程</div>
+      <div class="chip"><span class="dot ai"></span>Stochastic：LLM 判断或生成</div>
+      <div class="chip"><span class="dot state"></span>State：文件移动、manifest、产物落盘</div>
+      <div class="chip"><span class="dot ext"></span>External：ffmpeg、ffprobe、Remotion CLI、Whisper</div>
+    </div>
+  </header>
+
+  <h2>两个核心问题</h2>
+  <div class="cards">
+    <section class="card det">
+      <span class="tag det">Routing</span>
+      <h3>主路由是固定流程</h3>
+      <p>当前不让 AI 决定下一步去哪。`render-workflow.mjs` 读取 manifest，调用 `ffprobe`，根据宽高确定 composition：竖屏走 `HostOverlayVideo`，横屏走 `HostOverlayReferenceV9`。</p>
+    </section>
+    <section class="card ai">
+      <span class="tag ai">AI Judgment</span>
+      <h3>AI 只在既定节点内判断</h3>
+      <p>AI 负责转写纠错、storyboard/phase 生成、视觉 QA 评价。它不负责文件路由、不决定是否跳过 render、不决定输出横竖屏。</p>
+    </section>
+    <section class="card state">
+      <span class="tag state">Prompts</span>
+      <h3>AI 节点需要固定 prompt</h3>
+      <p>已沉淀固定 prompt：`transcript-correction-system.md`、`storyboard-system.md`、`visual-audit-system.md`。下一步是脚本自动读取这些 prompt 调 AI。</p>
+    </section>
+  </div>
+
+  <h2>Attention Contract</h2>
+  <div class="cards">
+    <section class="card det">
+      <span class="tag det">One Active Motion</span>
+      <h3>同一时间只更新一个主动画</h3>
+      <p>左边和右边可以同时存在，但不能同时抢注意力。一个概念正在出现时，其他区域只能作为静态上下文。</p>
+    </section>
+    <section class="card ai">
+      <span class="tag ai">Storyboard Decision</span>
+      <h3>AI 决定保留、淡出或覆盖</h3>
+      <p>AI 在 storyboard 节点为每个概念标注：active primary、passive context、fade out、freeze、replace。这个判断受固定 prompt 约束。</p>
+    </section>
+    <section class="card ext">
+      <span class="tag ext">Audio Layer</span>
+      <h3>SFX 和 BGM 放在 Remotion</h3>
+      <p>音效、背景音乐用 Remotion 的 <code>&lt;Audio&gt;</code> 和 <code>&lt;Sequence&gt;</code> 编排。当前不需要新 repo。</p>
+    </section>
+  </div>
+
+  <h2>Routing Contract</h2>
+  <table>
+    <thead><tr><th>条件</th><th>决策者</th><th>结果</th><th>是否让 AI 参与</th></tr></thead>
+    <tbody>
+      <tr><td><code>outputOrientation: "auto"</code> 且 <code>width &gt; height</code></td><td><span class="type det">Deterministic</span></td><td>选择 <code>HostOverlayReferenceV9</code>，输出 1920x1080</td><td>否</td></tr>
+      <tr><td><code>outputOrientation: "auto"</code> 且 <code>height &gt;= width</code></td><td><span class="type det">Deterministic</span></td><td>选择 <code>HostOverlayVideo</code>，输出 720x1280</td><td>否</td></tr>
+      <tr><td><code>outputOrientation</code> 显式写为 <code>vertical</code> / <code>landscape</code></td><td><span class="type det">Deterministic</span></td><td>按 manifest override 输出</td><td>否</td></tr>
+      <tr><td>字幕、章节、phase 文案</td><td><span class="type ai">Stochastic</span></td><td>AI 在固定 prompt 下生成候选，人工或后续校验确认</td><td>是</td></tr>
+      <tr><td>一个概念结束后保留/淡出/覆盖</td><td><span class="type ai">Stochastic</span></td><td>AI 在 storyboard prompt 约束下给出编排建议</td><td>是，但只在节点内判断</td></tr>
+      <tr><td>SFX / BGM 放在哪</td><td><span class="type det">Deterministic</span></td><td>统一放在 Remotion project 的 <code>public/sfx</code> / <code>public/music</code></td><td>否</td></tr>
+    </tbody>
+  </table>
+
+  <h2>13 个 Stage</h2>
+  <div class="stages">
+    <section class="stage">
+      <div><div class="stage-name">1. Open Job</div><div class="stage-kind">State</div></div>
+      <div>
+        <h3>创建或复制 manifest</h3>
+        <ul>
+          <li>从 <code>workflow/manifest.template.json</code> 复制新 job。</li>
+          <li>写入 <code>sourceVideo</code>、<code>projectName</code>、topic 和初始要求。</li>
+          <li>这是状态入口，不调用 AI。</li>
+        </ul>
+      </div>
+      <div class="io">input: user source path<br>output: <code>workflow/manifest.json</code></div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">2. Probe Source</div><div class="stage-kind">Deterministic + External</div></div>
+      <div>
+        <h3>读取视频元数据</h3>
+        <ul>
+          <li>脚本调用 <code>ffprobe</code>。</li>
+          <li>得到 width、height、fps、duration、size。</li>
+          <li>输出 <code>vertical</code> 或 <code>landscape</code>。</li>
+        </ul>
+      </div>
+      <div class="io">script: <code>detect-orientation.mjs</code><br>output: orientation JSON</div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">3. Route Composition</div><div class="stage-kind">Deterministic</div></div>
+      <div>
+        <h3>固定路由，不问 AI</h3>
+        <ul>
+          <li>竖屏：<code>HostOverlayVideo</code>。</li>
+          <li>横屏：<code>HostOverlayReferenceV9</code>。</li>
+          <li>除非 manifest 显式 override，否则不改变源视频方向。</li>
+        </ul>
+      </div>
+      <div class="io">input: orientation<br>output: composition id</div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">4. Prepare Asset</div><div class="stage-kind">State</div></div>
+      <div>
+        <h3>复制源视频到 Remotion public</h3>
+        <ul>
+          <li>将 sourceVideo 复制为 <code>public/host.mp4</code>。</li>
+          <li>Remotion components 统一从这个路径读取。</li>
+        </ul>
+      </div>
+      <div class="io">from: source video<br>to: <code>public/host.mp4</code></div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">5. Transcribe</div><div class="stage-kind">External + AI</div></div>
+      <div>
+        <h3>语音转文字</h3>
+        <ul>
+          <li>Whisper 或类似工具生成 txt/srt/vtt/json。</li>
+          <li>这是 ML 模型输出，结果需要后续纠错。</li>
+        </ul>
+      </div>
+      <div class="io">input: audio/video<br>output: <code>transcript/source.*</code></div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">6. Correct Transcript</div><div class="stage-kind">Stochastic</div></div>
+      <div>
+        <h3>AI 纠错但不改意思</h3>
+        <ul>
+          <li>使用固定 prompt：<code>workflow/prompts/transcript-correction-system.md</code>。</li>
+          <li>纠正 ASR 错词、同音词、专有词。</li>
+          <li>输出 correction notes。</li>
+        </ul>
+      </div>
+      <div class="io">input: ASR text<br>output: corrected transcript</div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">7. Build Storyboard</div><div class="stage-kind">Stochastic</div></div>
+      <div>
+        <h3>AI 生成 phases 和字幕结构</h3>
+        <ul>
+          <li>使用固定 prompt：<code>workflow/prompts/storyboard-system.md</code>。</li>
+          <li>拆 chapters、phases、captions、skillBoard。</li>
+          <li>为每个视觉元素标注 active primary / passive context / fade / freeze / replace。</li>
+          <li>保证同一时间只让一个主动画更新。</li>
+          <li>写入 <code>src/storyboard.json</code>，作为 Remotion 的内容源。</li>
+          <li>5-10 分钟视频默认拆成 60-120 秒 segment，每 20 秒左右一个 visual beat。</li>
+        </ul>
+      </div>
+      <div class="io">output: storyboard md + <code>src/storyboard.json</code></div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">8. Compose Remotion</div><div class="stage-kind">Deterministic + State</div></div>
+      <div>
+        <h3>模板渲染图层</h3>
+        <ul>
+          <li>React/CSS 决定视觉系统、动画、SFX、字幕布局。</li>
+          <li>Remotion 时间轴执行 attention choreography：新动画进场，旧动画冻结、变暗或退场。</li>
+          <li>当前 phases/captions/chapters/duration 从 <code>src/storyboard.json</code> 读取。</li>
+        </ul>
+      </div>
+      <div class="io">input: host.mp4 + composition code<br>state: <code>src/Composition.tsx</code></div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">9. Audio Layer</div><div class="stage-kind">Deterministic + External</div></div>
+      <div>
+        <h3>放置 SFX 和背景音乐</h3>
+        <ul>
+          <li>SFX 统一放在 <code>public/sfx/</code>。</li>
+          <li>背景音乐统一放在 <code>public/music/</code>。</li>
+          <li>Remotion 用 <code>&lt;Audio&gt;</code> 和 <code>&lt;Sequence&gt;</code> 按时间点混音。</li>
+          <li>BGM 默认低音量，并应避开讲话主频。</li>
+        </ul>
+      </div>
+      <div class="io">assets: <code>public/sfx</code><br>future: <code>public/music</code></div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">10. Render</div><div class="stage-kind">Deterministic + External</div></div>
+      <div>
+        <h3>执行 Remotion CLI</h3>
+        <ul>
+          <li>先 <code>npm run lint</code>。</li>
+          <li>再 <code>npx remotion render</code>。</li>
+          <li>输出 raw mp4 到 renders。</li>
+        </ul>
+      </div>
+      <div class="io">script: <code>render-workflow.mjs</code><br>output: <code>*-raw.mp4</code></div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">11. Delivery Encode</div><div class="stage-kind">Deterministic + External</div></div>
+      <div>
+        <h3>生成平台安全版本</h3>
+        <ul>
+          <li>ffmpeg 固定输出尺寸、SAR、DAR、像素格式和音频格式。</li>
+          <li>竖屏固定 <code>720x1280</code>，横屏固定 <code>1920x1080</code>。</li>
+          <li>Telegram 上传时显式传 <code>width</code>、<code>height</code>、<code>duration</code>。</li>
+        </ul>
+      </div>
+      <div class="io">output: delivery-safe <code>*.mp4</code></div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">12. QA Frames</div><div class="stage-kind">Deterministic + External</div></div>
+      <div>
+        <h3>抽 still 和 contact sheet</h3>
+        <ul>
+          <li>ffmpeg 按 manifest 的 frame list 抽图。</li>
+          <li>生成 2x2 contact sheet 供视觉审查。</li>
+        </ul>
+      </div>
+      <div class="io">output: <code>workflow-frames/*contact-sheet.png</code></div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">13. Visual Audit</div><div class="stage-kind">Stochastic + Deterministic</div></div>
+      <div>
+        <h3>AI 审查固定检查项</h3>
+        <ul>
+          <li>使用固定 prompt：<code>workflow/prompts/visual-audit-system.md</code>。</li>
+          <li>检查遮挡、字幕安全区、横竖屏是否正确、是否接近参考风格。</li>
+          <li>检查是否同时有多个主动画在更新，导致 attention 被拉扯。</li>
+          <li>是否继续迭代由人工或明确阈值决定，不让 AI 自由跳流程。</li>
+        </ul>
+      </div>
+      <div class="io">input: contact sheet<br>output: visual QA notes</div>
+    </section>
+
+    <section class="stage">
+      <div><div class="stage-name">14. Handoff</div><div class="stage-kind">State</div></div>
+      <div>
+        <h3>交付和复用记录</h3>
+        <ul>
+          <li>写入 production handoff 和 match audit。</li>
+          <li>记录最终 render、contact sheet、source metadata、阻塞点。</li>
+        </ul>
+      </div>
+      <div class="io">output: <code>deliverables/*handoff.md</code><br><code>*match-audit.md</code></div>
+    </section>
+  </div>
+
+  <h2>22 步执行映射</h2>
+  <table>
+    <thead><tr><th>#</th><th>动作</th><th>类型</th><th>固定 prompt / 脚本</th><th>路由是否固定</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>复制 manifest 模板</td><td><span class="type state">State</span></td><td><code>workflow/manifest.template.json</code></td><td>是</td></tr>
+      <tr><td>2</td><td>写入 sourceVideo / projectName</td><td><span class="type state">State</span></td><td><code>workflow/manifest.json</code></td><td>是</td></tr>
+      <tr><td>3</td><td>ffprobe 读取宽高和时长</td><td><span class="type ext">External</span></td><td><code>detect-orientation.mjs</code></td><td>是</td></tr>
+      <tr><td>4</td><td>根据横竖屏选择 composition</td><td><span class="type det">Deterministic</span></td><td><code>render-workflow.mjs</code></td><td>是</td></tr>
+      <tr><td>5</td><td>复制视频到 public/host.mp4</td><td><span class="type state">State</span></td><td><code>render-workflow.mjs</code></td><td>是</td></tr>
+      <tr><td>6</td><td>Whisper 转写</td><td><span class="type ai">Stochastic</span></td><td>ASR model</td><td>是</td></tr>
+      <tr><td>7</td><td>AI 纠错 transcript</td><td><span class="type ai">Stochastic</span></td><td><code>transcript-correction-system.md</code></td><td>是</td></tr>
+      <tr><td>8</td><td>AI 生成 storyboard / phases / attention choreography</td><td><span class="type ai">Stochastic</span></td><td><code>storyboard-system.md</code></td><td>是</td></tr>
+      <tr><td>9</td><td>人工或规则确认 phase timing</td><td><span class="type det">Deterministic</span></td><td>duration + transcript timestamps</td><td>是</td></tr>
+      <tr><td>10</td><td>校验 storyboard timing / attention policy</td><td><span class="type det">Deterministic</span></td><td><code>validate-storyboard.mjs</code></td><td>是</td></tr>
+      <tr><td>11</td><td>Remotion 读取 host.mp4、storyboard 和 composition</td><td><span class="type det">Deterministic</span></td><td><code>src/Composition.tsx</code> + <code>src/storyboard.json</code></td><td>是</td></tr>
+      <tr><td>12</td><td>Remotion 放置 SFX / BGM audio layer</td><td><span class="type det">Deterministic</span></td><td><code>&lt;Audio&gt;</code> + <code>&lt;Sequence&gt;</code></td><td>是</td></tr>
+      <tr><td>13</td><td>运行 lint / tsc</td><td><span class="type det">Deterministic</span></td><td><code>npm run lint</code></td><td>是</td></tr>
+      <tr><td>14</td><td>Remotion render</td><td><span class="type ext">External</span></td><td><code>npx remotion render</code></td><td>是</td></tr>
+      <tr><td>15</td><td>ffmpeg 生成 delivery-safe MP4</td><td><span class="type ext">External</span></td><td><code>ffmpeg scale/setsar/yuv420p/+faststart</code></td><td>是</td></tr>
+      <tr><td>16</td><td>ffmpeg 抽 contact sheet</td><td><span class="type ext">External</span></td><td><code>ffmpeg select/tile</code></td><td>是</td></tr>
+      <tr><td>17</td><td>ffprobe 验证输出</td><td><span class="type ext">External</span></td><td><code>ffprobe</code></td><td>是</td></tr>
+      <tr><td>18</td><td>打开成片</td><td><span class="type ext">External</span></td><td><code>open output.mp4</code></td><td>是</td></tr>
+      <tr><td>19</td><td>AI 视觉 QA</td><td><span class="type ai">Stochastic</span></td><td><code>visual-audit-system.md</code></td><td>是，QA 只输出建议</td></tr>
+      <tr><td>20</td><td>上传平台时显式传宽高时长</td><td><span class="type det">Deterministic</span></td><td>Telegram: <code>width/height/duration/supports_streaming</code></td><td>是</td></tr>
+      <tr><td>21</td><td>写 handoff / match audit</td><td><span class="type state">State</span></td><td><code>deliverables/*.md</code></td><td>是</td></tr>
+      <tr><td>22</td><td>决定是否重拍素材</td><td><span class="type det">Deterministic</span></td><td>若 source geometry 不满足参考要求，则进入 reshoot spec</td><td>是</td></tr>
+    </tbody>
+  </table>
+
+  <h2>固定 Prompt 边界</h2>
+  <table>
+    <thead><tr><th>AI 节点</th><th>固定 system prompt</th><th>允许 AI 做什么</th><th>不允许 AI 做什么</th></tr></thead>
+    <tbody>
+      <tr><td>Transcript Correction</td><td><code>workflow/prompts/transcript-correction-system.md</code></td><td>纠正 ASR 错误、列 correction notes</td><td>改写观点、加入新内容</td></tr>
+      <tr><td>Storyboard Builder</td><td><code>workflow/prompts/storyboard-system.md</code></td><td>拆 phases、字幕、视觉隐喻、skill board</td><td>改变横竖屏路由、虚构 speaker 没说的内容</td></tr>
+      <tr><td>Visual Audit</td><td><code>workflow/prompts/visual-audit-system.md</code></td><td>检查遮挡、字幕、安全区、注意力过载、参考风格差距</td><td>自由决定跳到其他流程、忽略 manifest 规则</td></tr>
+    </tbody>
+  </table>
+
+  <h2>当前自动化程度</h2>
+  <div class="note">
+    <p><strong>已经自动化：</strong>横竖屏检测、composition 路由、复制素材、storyboard 校验、JSON 驱动 Remotion、lint、render、delivery-safe encode、contact sheet、ffprobe、打开成片。</p>
+    <p><strong>半自动：</strong>转写纠错、storyboard、attention choreography、视觉 QA 已经有固定 prompt，但还没有接入一个统一的 AI runner。</p>
+    <p><strong>音频决策：</strong>SFX 和 BGM 先放在 Remotion 内部，用 <code>&lt;Audio&gt;</code> 时间轴处理；不新建 repo。</p>
+    <p><strong>还未自动化：</strong>AI runner 还没有自动把 transcript 生成 <code>src/storyboard.json</code>；5-10 分钟视频的 per-segment QA contact sheet 还需要脚本化。</p>
+  </div>
+
+  <h2>关键命令</h2>
+  <pre>cd remotion-host-overlay-demo
+npm run workflow:detect
+npm run workflow:render</pre>
+
+  <p class="footer">Updated: 2026-05-23 · Owner surface: reusable Remotion host-overlay workflow.</p>
+</main>
+</body>
+</html>

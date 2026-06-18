@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remotion 项目 · 产品 Spec v1</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#161a22; --panel2:#1d2230; --ink:#e8ecf3; --mut:#8b94a7;
+    --line:#272d3a; --accent:#7c9cff; --gold:#f4c95d; --green:#5fd39a; --amber:#f0b35a;
+    --red:#f0797a; --base:#2a3550; --sig:#3a2a4a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:44px 28px 80px}
+  .kicker{color:var(--gold);font-size:12px;letter-spacing:.22em;text-transform:uppercase;font-weight:700}
+  h1{font-size:30px;margin:8px 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:14px;margin-bottom:4px}
+  .def{background:linear-gradient(180deg,#1a2030,#161a22);border:1px solid var(--line);
+    border-left:3px solid var(--gold);border-radius:12px;padding:18px 20px;margin:22px 0 30px;font-size:15px}
+  .def b{color:var(--gold)}
+  h2{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);
+    margin:38px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+
+  /* pipeline */
+  .pipe{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:6px 0 8px}
+  .node{flex:1;min-width:96px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:10px 8px;text-align:center;position:relative}
+  .node .n{font-size:9px;color:var(--mut);letter-spacing:.08em}
+  .node .t{font-size:12.5px;font-weight:650;margin-top:3px}
+  .node.base{border-color:#3b517f;background:#19223a}
+  .node.sig{border-color:#6a4c87;background:#241a33}
+  .arrow{align-self:center;color:var(--mut);font-size:14px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin:14px 0 0}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+  /* module cards */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 17px}
+  .card.base{border-top:2px solid #4a6bd0}
+  .card.sig{border-top:2px solid #9a6bd0}
+  .chead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .ctitle{font-size:15px;font-weight:700}
+  .ctitle .num{color:var(--mut);font-weight:600;margin-right:6px}
+  .badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .b-exist{background:rgba(95,211,154,.14);color:var(--green);border:1px solid rgba(95,211,154,.3)}
+  .b-part{background:rgba(240,179,90,.14);color:var(--amber);border:1px solid rgba(240,179,90,.3)}
+  .b-miss{background:rgba(240,121,122,.14);color:var(--red);border:1px solid rgba(240,121,122,.3)}
+  .type{font-size:10.5px;color:var(--mut);letter-spacing:.04em;margin-bottom:8px}
+  .desc{font-size:13px;color:#cdd4e1;margin-bottom:10px}
+  .sc{font-size:12px;color:var(--mut);border-top:1px dashed var(--line);padding-top:9px}
+  .sc b{color:#aeb8cc;font-weight:600;display:block;margin-bottom:3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+  .sc ul{margin:0;padding-left:16px}
+  .sc li{margin:2px 0}
+  .star{color:var(--gold)}
+  .heart{color:#ff8fb0}
+
+  /* decisions */
+  .dec{background:linear-gradient(180deg,#201826,#181420);border:1px solid #4a3a52;
+    border-left:3px solid var(--gold);border-radius:12px;padding:18px 20px;margin:14px 0}
+  .dec h3{margin:0 0 4px;font-size:16px}
+  .dec .why{color:var(--mut);font-size:12.5px;margin-bottom:14px}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .opt{background:#13161d;border:1px solid var(--line);border-radius:10px;padding:12px 13px}
+  .opt.rec{border-color:#5fd39a;background:rgba(95,211,154,.06)}
+  .opt .h{font-size:13px;font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+  .opt .tag{font-size:9px;font-weight:700;color:var(--green);border:1px solid rgba(95,211,154,.4);border-radius:20px;padding:2px 7px}
+  .opt p{margin:0;font-size:11.5px;color:var(--mut);line-height:1.5}
+  .opt .cost{margin-top:7px;font-size:11px;color:#cdd4e1}
+
+  .foot{margin-top:34px;color:var(--mut);font-size:12px;border-top:1px solid var(--line);padding-top:16px}
+  .open{background:var(--panel2);border:1px dashed var(--line);border-radius:10px;padding:13px 16px;font-size:12.5px;color:var(--mut);margin-top:14px}
+  .open b{color:var(--ink)}
+  @media(max-width:720px){.grid,.opts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">Remotion 项目 · 产品 Spec</div>
+  <h1>Transcript-first 视频剪辑系统 <span style="color:var(--mut);font-weight:400;font-size:18px">v1 提案</span></h1>
+  <div class="sub">Transcript-first workbench &nbsp;|&nbsp; 工作区 <code style="color:#9fb0d0">autocut</code> &nbsp;|&nbsp; 基于现有 architecture.md</div>
+
+  <div class="def">
+    这不是"自动剪辑软件",而是一个 <b>Agent 编排的视频制作系统</b>。<br>
+    主语是<b>剪辑底座</b>:你给 1–3 段口播视频 → 系统转写 → <b>你改文字顺序就改了视频顺序</b> → 生成 EDL → 剪成 clean master。<br>
+    Remotion overlay 是<b>签名最终层</b> —— 架构上最后做,但它是<b>这个项目存在的理由</b>(人在前景 + 透明动画层),是它跟任何剪辑工具的本质区别。
+  </div>
+
+  <!-- PIPELINE -->
+  <h2>主流程 · 剪辑是底座,Overlay 是签名层</h2>
+  <div class="pipe">
+    <div class="node base"><div class="n">SRC</div><div class="t">多段源视频</div></div>
+    <div class="arrow">→</div>
+    <div class="node base"><div class="n">01</div><div class="t">Ingest</div></div>
+    <div class="arrow">→</div>
+    <div class="node base"><div class="n">02</div><div class="t">Transcribe</div></div>
+    <div class="arrow">→</div>
+    <div class="node base" style="border-color:var(--gold);background:#2a2618"><div class="n">03 ★核心</div><div class="t">Assembly<br>改文字顺序</div></div>
+    <div class="arrow">→</div>
+    <div class="node base"><div class="n">04</div><div class="t">Multi-src<br>EDL</div></div>
+    <div class="arrow">→</div>
+    <div class="node base"><div class="n">05</div><div class="t">Clean<br>Master</div></div>
+    <div class="arrow">→</div>
+    <div class="node sig"><div class="n">06 签名</div><div class="t">Remotion<br>Overlay</div></div>
+    <div class="arrow">→</div>
+    <div class="node"><div class="n">07</div><div class="t">QA</div></div>
+    <div class="arrow">→</div>
+    <div class="node"><div class="n">08</div><div class="t">Deliver</div></div>
+  </div>
+  <div class="legend">
+    <span><i class="dot" style="background:#19223a;border:1px solid #3b517f"></i> 剪辑底座(本次重设计重心)</span>
+    <span><i class="dot" style="background:#241a33;border:1px solid #6a4c87"></i> Remotion 签名层(差异化)</span>
+    <span><i class="dot" style="background:var(--green)"></i> 已有</span>
+    <span><i class="dot" style="background:var(--amber)"></i> 部分</span>
+    <span><i class="dot" style="background:var(--red)"></i> 缺失</span>
+  </div>
+
+  <!-- MODULES -->
+  <h2>功能模块 · 现状 vs 缺口 + Success Criteria</h2>
+  <div class="grid">
+
+    <div class="card base">
+      <div class="chead"><div class="ctitle"><span class="num">01</span>Ingest</div><span class="badge b-exist">已有 ✅</span></div>
+      <div class="type">确定性脚本 · ingest-video.mjs</div>
+      <div class="desc">读源视频:横竖屏 / 时长 / fps / codec / 音轨 / HDR;多段一致性检查。</div>
+      <div class="sc"><b>Success Criteria</b><ul>
+        <li>100% 识别横竖屏 → 源竖屏则成片默认竖屏</li>
+        <li>多段尺寸/fps 不一致时明确报警</li>
+        <li class="star">已验证:识别现有视频为 720×1280 vertical</li>
+      </ul></div>
+    </div>
+
+    <div class="card base">
+      <div class="chead"><div class="ctitle"><span class="num">02</span>Transcribe</div><span class="badge b-part">部分 ⚠️</span></div>
+      <div class="type">外部 ASR / 缓存 · transcribe-video.mjs</div>
+      <div class="desc">生成 word-level 带时间戳文字稿。<b style="color:var(--amber)">现状只支持"复用已有 transcript",没接真 ASR</b> —— transcript-first 产品里这是承重墙。见 <b>决策 #2</b>。</div>
+      <div class="sc"><b>Success Criteria</b><ul>
+        <li>每词有 start/end;同源不重复转写</li>
+        <li>支持从文字映射回视频时间段</li>
+        <li>ASR 不可用时明确失败,不假装成功</li>
+      </ul></div>
+    </div>
+
+    <div class="card base" style="border-top-color:var(--gold);box-shadow:0 0 0 1px rgba(244,201,93,.2)">
+      <div class="chead"><div class="ctitle"><span class="num">03</span>Transcript Assembly <span class="star">★ 核心交互</span></div><span class="badge b-miss">缺失 ❌</span></div>
+      <div class="type">AI + 人工 · 全新模块(当前无脚本)</div>
+      <div class="desc">把多段视频转成 <code>assembly.md</code>,每个文字 block 保留 source/start/end。<b>你只改 block 顺序或删 block,视频顺序就变了</b>。例:P1 → P2前80% → P3 → P2后20%。见 <b>决策 #1</b>。</div>
+      <div class="sc"><b>Success Criteria</b><ul>
+        <li>用户不用手填秒数;"80%"只是语义附近</li>
+        <li>切点 snap 到句子/停顿/词边界,不切词中间</li>
+        <li>改顺序后能稳定生成 multi-source EDL</li>
+        <li>无法映射时明确标记(不静默出错)</li>
+      </ul></div>
+    </div>
+
+    <div class="card base">
+      <div class="chead"><div class="ctitle"><span class="num">04</span>Multi-source EDL</div><span class="badge b-part">部分 ⚠️</span></div>
+      <div class="type">确定性协议层 · build-edl.mjs</div>
+      <div class="desc">关键帧/keep+delete ranges。<b style="color:var(--amber)">现状是单源 autocut</b>,Park 的需求要升级成<b>多源 manual EDL</b>(跨 P1/P2/P3 拼接重排)。含口播清理:删长静音/语气词/卡顿/重复,删前保后。</div>
+      <div class="sc"><b>Success Criteria</b><ul>
+        <li>默认不激进删除;删>15% 或语义删除必须 review</li>
+        <li>每个接缝 30ms audio fade,避免爆音</li>
+        <li>接回多源后统一分辨率/fps/音频格式</li>
+      </ul></div>
+    </div>
+
+    <div class="card base">
+      <div class="chead"><div class="ctitle"><span class="num">05</span>Clean Master</div><span class="badge b-exist">已有 ✅</span></div>
+      <div class="type">确定性脚本 · render-edl.mjs (ffmpeg)</div>
+      <div class="desc">按 EDL 剪出干净成片 —— 这是 overlay 之前的"可靠剪辑底座"。</div>
+      <div class="sc"><b>Success Criteria</b><ul>
+        <li>无删除片段时能正确直出 cut mp4(已验证)</li>
+        <li>多源拼接接缝无跳音/跳帧</li>
+      </ul></div>
+    </div>
+
+    <div class="card sig">
+      <div class="chead"><div class="ctitle"><span class="num">06</span>Remotion Overlay <span class="heart">♥ 签名层</span></div><span class="badge b-exist">已有 ✅</span></div>
+      <div class="type">Remotion 视觉合成 + Storyboard · V8 最佳</div>
+      <div class="desc"><b>这是项目的差异化与存在理由</b>:人在前景,透明动画层漂浮其前(技能表/大数字/图表卡/双语字幕/房间感)。架构上最后做,但它定义产品。</div>
+      <div class="sc"><b>Success Criteria</b><ul>
+        <li><b>单动画 focus</b>:一次只更新一个动画,讲完的 fade out / 被覆盖,不分散注意力</li>
+        <li>字幕在 overlay 之后叠;不遮人脸</li>
+        <li>QA 几何 = 100;每个项目可选要不要 overlay</li>
+      </ul></div>
+    </div>
+
+    <div class="card">
+      <div class="chead"><div class="ctitle"><span class="num">07</span>QA</div><span class="badge b-exist">已有 ✅</span></div>
+      <div class="type">确定性脚本 · qa-render.mjs</div>
+      <div class="desc">几何 / 字幕 / 人脸安全 / 交付格式自检。</div>
+      <div class="sc"><b>Success Criteria</b><ul>
+        <li>方形像素 / yuv420p / AAC / +faststart</li>
+        <li class="star">已验证:竖屏成片 geometry=100, status=pass</li>
+      </ul></div>
+    </div>
+
+    <div class="card">
+      <div class="chead"><div class="ctitle"><span class="num">08</span>Deliver</div><span class="badge b-exist">已有 ✅</span></div>
+      <div class="type">确定性脚本 · deliver-telegram.mjs</div>
+      <div class="desc">Telegram / 平台交付 metadata。</div>
+      <div class="sc"><b>Success Criteria</b><ul>
+        <li>上传带显式 width / height / duration</li>
+        <li>竖屏不被平台压成横屏</li>
+      </ul></div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:14px;font-size:12px;color:var(--mut)">
+    编排层 <b style="color:#aeb8cc">Orchestrator</b>(run-video-pipeline.mjs · 已有 ✅):Agent 决定模块顺序,但不能跳过 correctness gate。Routing = 固定主流程 + 在 Assembly/Review 节点让 AI 判断。
+  </div>
+
+  <!-- DECISIONS -->
+  <h2>需要 Park 拍板的 2 个决策(决定产品难度)</h2>
+
+  <div class="dec">
+    <h3>决策 #1 · Assembly 模式:只重排,还是允许改写?</h3>
+    <div class="why">这是核心交互的可行性分水岭。Codex 在 session 里已点出:能不能稳定把文字映射回视频,取决于这个。</div>
+    <div class="opts">
+      <div class="opt rec">
+        <div class="h">A. 只重排 / 删除 block <span class="tag">✓ Park 已选</span></div>
+        <p>用户只移动或删除文字段落,不改字。每段保留 source+时间戳,映射回视频<b>完全确定</b>。</p>
+        <div class="cost">成本低 · 确定性高 · 现有能力即可扩</div>
+      </div>
+      <div class="opt">
+        <div class="h">B. 允许改写文字</div>
+        <p>用户能改写文案。改写后的文字无法直接定位原视频,需要 <b>fuzzy matching</b>,确定性下降,工程量大增。</p>
+        <div class="cost">成本高 · 确定性低 · 改写文字只能当字幕用</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dec">
+    <h3>决策 #2 · ASR 入口:转写从哪来?</h3>
+    <div class="why">transcript-first 产品里转写是承重墙,现状"只复用已有 transcript"撑不起。</div>
+    <div class="opts">
+      <div class="opt rec">
+        <div class="h">A. MLX Whisper 本地 <span class="tag">✓ Park 已选</span></div>
+        <p>本机跑,<b>无需 API key、不上传、可批处理</b>,符合自动化口播流。</p>
+        <div class="cost">无外部依赖 · 隐私好 · 需装一次本地后端</div>
+      </div>
+      <div class="opt">
+        <div class="h">B. 云端 ASR / 维持复用</div>
+        <p>云端要 key+联网+成本;维持"只复用"则每次得先有现成 transcript,不够自动。</p>
+        <div class="cost">云端=钱+key · 复用=不够自动</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="open">
+    <b>不阻塞的开放项</b>:是否允许"纯剪辑、完全不加 overlay"的项目(纯口播成片)。建议先不定死,等做起来自然落地 —— overlay 已设计成 per-project 可选。
+  </div>
+
+  <div class="foot">
+    <b style="color:var(--ink)">现状一句话</b>:8 个模块里 5 个已有、2 个部分、1 个(★Assembly)缺失。重设计 = 把"改文字→改视频"的 Assembly 立为一等模块 + 把单源 autocut 升级成多源 EDL。<br>
+    <b style="color:var(--ink)">还差</b>:此工作区<b style="color:var(--amber)">尚未 git 化、未 push GitHub</b>。<br><br>
+    <b style="color:var(--green)">✓ Park 已拍板</b>:#1 只重排/删除 block · #2 MLX Whisper 本地。<br>
+    <b style="color:var(--gold)">下一步 build plan</b>:① Assembly 模块(transcript → assembly.md,改顺序) → ② Multi-source EDL(跨段拼接) → ③ 接 MLX Whisper 本地转写 → ④ 用你今天三段视频跑通验收。本页是功能 spec,build plan 待 Park 批准后展开。
+  </div>
+
+</div>
+</body>
+</html>

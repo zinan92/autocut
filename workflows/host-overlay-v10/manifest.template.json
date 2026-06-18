@@ -1,0 +1,84 @@
+{
+  "projectName": "host-overlay-v10-example",
+  "sources": [
+    {
+      "id": "part1",
+      "path": "/absolute/path/to/part1.mp4",
+      "transcriptPath": "/absolute/path/to/part1/transcript.json"
+    },
+    {
+      "id": "part2",
+      "path": "/absolute/path/to/part2.mp4",
+      "transcriptPath": "/absolute/path/to/part2/transcript.json"
+    },
+    {
+      "id": "part3",
+      "path": "/absolute/path/to/part3.mp4",
+      "transcriptPath": "/absolute/path/to/part3/transcript.json"
+    }
+  ],
+  "target": "clean-master",
+  "orientation": "auto",
+  "outputOrientation": "auto",
+  "stylePreset": "host-overlay-v10",
+  "storyboardPath": "remotion-host-overlay-demo/src/storyboard.json",
+  "transcribe": {
+    "backend": "mlx",
+    "model": "mlx-community/whisper-large-v3-turbo",
+    "language": "zh"
+  },
+  "assembly": {
+    "insertThirdIntoSecond": true,
+    "splitRatio": 0.8,
+    "maxBlockSeconds": 18,
+    "silenceBreakSeconds": 0.7
+  },
+  "autocut": {
+    "enabled": true,
+    "silenceThresholdSec": 0.5,
+    "fillerMode": "mark",
+    "requiresReview": true
+  },
+  "editPlan": {
+    "strategyConfirmationRequired": true,
+    "targetLengthMinutes": "5-10",
+    "preserveOriginalOrder": true
+  },
+  "render": {
+    "codec": "h264",
+    "crf": 18,
+    "concurrency": 2
+  },
+  "delivery": {
+    "crf": 18,
+    "preset": "medium",
+    "audioBitrate": "192k",
+    "telegramRequiresExplicitMetadata": true
+  },
+  "attentionPolicy": {
+    "maxActivePrimaryAnimation": 1,
+    "allowPersistentPassiveContext": true,
+    "rule": "Only one primary visual region should update at a time."
+  },
+  "qa": {
+    "openAfterRender": true,
+    "minimumGeometryScore": 100,
+    "minimumDeliveryScore": 100
+  },
+  "content": {
+    "language": "zh-CN",
+    "topic": "",
+    "summary": "",
+    "chapters": [],
+    "phases": []
+  },
+  "skillBoard": [
+    ["video-ingest", "ffprobe metadata / orientation routing"],
+    ["transcribe", "word-level ASR cache"],
+    ["autocut", "silence / filler / retake candidates"],
+    ["edl", "keep ranges / cut policy / review gate"],
+    ["remotion-overlay", "storyboard JSON / attention choreography"],
+    ["delivery", "yuv420p / faststart / platform metadata"],
+    ["qa", "geometry / caption / face safety checks"]
+  ]
+}

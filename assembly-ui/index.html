@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assembly Review</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="left">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">Remotion V1</div>
+          <h1>Assembly Review</h1>
+        </div>
+        <div class="actions">
+          <button id="saveBtn">Save</button>
+          <button id="exportBtn">Export EDL</button>
+        </div>
+      </header>
+      <div id="status" class="status">Loading...</div>
+      <div id="blocks" class="blocks"></div>
+    </section>
+
+    <section class="right">
+      <div class="playerWrap">
+        <video id="video" controls playsinline></video>
+      </div>
+      <div class="previewBar">
+        <button id="playAssemblyBtn">Play Assembly</button>
+        <button id="stopBtn">Stop</button>
+        <span id="nowPlaying">No block selected</span>
+      </div>
+      <div id="sources" class="sources"></div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
