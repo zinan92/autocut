@@ -45,6 +45,7 @@ const storyboardPath = resolve(
   workspaceDir,
   manifest.storyboardPath ?? "remotion-host-overlay-demo/src/storyboard.json",
 );
+const projectStoryboardPath = join(projectDir, "src", "storyboard.json");
 const sourceVideo = isAbsolute(manifest.sourceVideo)
   ? manifest.sourceVideo
   : resolve(dirname(manifestPath), manifest.sourceVideo);
@@ -83,12 +84,19 @@ const contactSheetPath = join(frameDir, `${projectName}-${outputOrientation}-con
 const publicHostPath = join(projectDir, "public", "host.mp4");
 
 copyFileSync(sourceVideo, publicHostPath);
+if (resolve(storyboardPath) !== resolve(projectStoryboardPath)) {
+  copyFileSync(storyboardPath, projectStoryboardPath);
+}
 
 console.log(`Source: ${sourceVideo}`);
 console.log(`Detected: ${probe.width}x${probe.height} ${probe.orientation}`);
 console.log(`Output orientation: ${outputOrientation}`);
 console.log(`Composition: ${composition}`);
 console.log(`Copied source to: ${publicHostPath}`);
+console.log(`Storyboard: ${storyboardPath}`);
+if (resolve(storyboardPath) !== resolve(projectStoryboardPath)) {
+  console.log(`Copied storyboard to: ${projectStoryboardPath}`);
+}
 
 run("npm", ["run", "lint"], { cwd: projectDir, stdio: "inherit" });
 run("node", [join(scriptDir, "validate-storyboard.mjs"), storyboardPath], {

@@ -24,6 +24,28 @@ const attentionById = Object.fromEntries(
 );
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
+const phaseAt = (index: number) =>
+  phases[index] ??
+  phases[phases.length - 1] ?? {
+    start: 0,
+    end: videoDuration,
+    kicker: "SEGMENT",
+    title: "片段",
+    accent: "#2f8dff",
+    stat: "01",
+    statLabel: "BEAT",
+    detail: "",
+  };
+const attentionWindow = (id: string, phaseIndex: number) => {
+  const phase = phaseAt(phaseIndex);
+  return attentionById[id] ?? {
+    id,
+    start: phase.start,
+    end: phase.end,
+    primary: id,
+    behavior: "one-primary-animation",
+  };
+};
 
 const useSeconds = () => {
   const frame = useCurrentFrame();
@@ -400,9 +422,10 @@ const RefHeader = ({ phase }: { phase: (typeof phases)[number] }) => {
 const RefSkillBoard = () => {
   const second = useSeconds();
   const frame = useCurrentFrame();
+  const boardWindow = attentionWindow("skill-board", 0);
   const opacity =
-    enter(second, 0.8, 0.65) *
-    interpolate(second, [10.8, 12], [1, 0], {
+    enter(second, boardWindow.start, 0.65) *
+    interpolate(second, [boardWindow.end - 1.2, boardWindow.end], [1, 0], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     });
@@ -476,12 +499,12 @@ const passiveAfter = (second: number, start: number, activeEnd: number, exit: nu
 
 const RefStoryPanelV9 = () => {
   const second = useSeconds();
-  const effortWindow = attentionById.effort;
-  const karmaWindow = attentionById.karma;
+  const effortWindow = attentionWindow("effort", 1);
+  const karmaWindow = attentionWindow("karma", 2);
   const active = windowOpacity(second, effortWindow.start, effortWindow.end, 0.52);
   const opacity = passiveAfter(second, effortWindow.start, effortWindow.end, karmaWindow.end);
   const y = interpolate(active, [0, 1], [24, 0]);
-  const effort = phases[1];
+  const effort = phaseAt(1);
 
   return (
     <div
@@ -536,13 +559,13 @@ const RefStatBlock = ({ phase }: { phase: (typeof phases)[number] }) => {
 
 const RefStatBlockV9 = () => {
   const second = useSeconds();
-  const karma = phases[2];
-  const karmaWindow = attentionById.karma;
-  const willWindow = attentionById.will;
+  const karma = phaseAt(2);
+  const karmaWindow = attentionWindow("karma", 2);
+  const willWindow = attentionWindow("will", 3);
   const active = windowOpacity(second, karmaWindow.start, karmaWindow.end, 0.52);
   const passive =
     enter(second, willWindow.start, 0.35) *
-    interpolate(second, [56, 57], [0.34, 0], {
+    interpolate(second, [willWindow.end - 1, willWindow.end], [0.34, 0], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     });
@@ -623,8 +646,8 @@ const RefSideCards = ({ phase }: { phase: (typeof phases)[number] }) => {
 const RefSideCardsV9 = () => {
   const second = useSeconds();
   const frame = useCurrentFrame();
-  const will = phases[3];
-  const willWindow = attentionById.will;
+  const will = phaseAt(3);
+  const willWindow = attentionWindow("will", 3);
   const active = enter(second, willWindow.start, 0.56);
   const opacity = active;
   const y = interpolate(active, [0, 1], [26, 0]);

@@ -38,6 +38,7 @@ npm run assembly:ui -- --assembly remotion-host-overlay-work/assembly/assembly.j
 npm run assembly:export -- --assembly remotion-host-overlay-work/assembly/assembly.json --out remotion-host-overlay-work/assembly/edl.json
 npm run edl:render -- remotion-host-overlay-work/assembly/edl.json --out remotion-host-overlay-work/assembly/clean-master.mp4
 npm run qa -- remotion-host-overlay-work/assembly/clean-master.mp4 --edl remotion-host-overlay-work/assembly/edl.json
+npm run overlay:prepare -- --video remotion-host-overlay-work/assembly/clean-master.mp4 --edl remotion-host-overlay-work/assembly/edl.json --out-dir remotion-host-overlay-work/overlay --project-name my-overlay
 npm run pipeline -- workflow/manifest.json
 npm run storyboard:from-transcript -- --transcript /path/to/transcript.json --manifest workflow/manifest.json
 ```
@@ -59,6 +60,23 @@ Open `http://localhost:8898`.
 - Use `Save` to persist `assembly.json`.
 - Use `Export EDL` to write a multi-source `edl.json`; dragging and previewing do not render MP4.
 - V1/M2 only allows block reorder/delete/restore. Text, source, start/end, hash, and group are immutable.
+
+## Remotion Overlay Bridge
+
+M3 starts from a rendered clean master and the matching EDL used to render it:
+
+```bash
+npm run overlay:prepare -- \
+  --video remotion-host-overlay-work/assembly/clean-master.mp4 \
+  --edl remotion-host-overlay-work/assembly/edl.json \
+  --out-dir remotion-host-overlay-work/overlay \
+  --project-name my-overlay
+
+node scripts/validate-storyboard.mjs remotion-host-overlay-work/overlay/storyboard.json
+node scripts/render-workflow.mjs remotion-host-overlay-work/overlay/manifest.json
+```
+
+`overlay:prepare` fails if the EDL duration does not match the clean master duration. If you edit/export a new EDL in the review UI, render a new clean master before preparing the Remotion overlay.
 
 For a single source with an existing transcript cache:
 
