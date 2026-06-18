@@ -92,6 +92,48 @@ test("render-edl renders traceable multi-source EDL and passes QA", { skip: !has
   assert.equal(existsSync(qaPath), true);
 });
 
+test("render-edl keeps duration stable across many short ranges", { skip: !hasFfmpeg }, () => {
+  const dir = mkdtempSync(join(tmpdir(), "render-edl-many-ranges-test-"));
+  const part1 = join(dir, "part1.mp4");
+  makeClip(part1, { color: "red", fps: 30, frequency: 440, duration: 7 });
+
+  const ranges = Array.from({ length: 60 }, (_, index) => {
+    const start = index * 0.1;
+    const end = start + 0.06;
+    return {
+      id: `range_${String(index + 1).padStart(3, "0")}`,
+      source: "part1",
+      start,
+      end,
+      blockId: `part1_${String(index + 1).padStart(3, "0")}`,
+    };
+  });
+  const expectedDuration = ranges.reduce((sum, range) => sum + range.end - range.start, 0);
+
+  const edlPath = join(dir, "edl.json");
+  const outPath = join(dir, "clean-master.mp4");
+  const qaPath = join(dir, "qa-report.json");
+  writeFileSync(edlPath, JSON.stringify({
+    version: 1,
+    mode: "multi-source-assembly",
+    sources: { part1 },
+    ranges,
+    rules: { cutBoundaryFadeMs: 30 },
+    metrics: { outputDuration: expectedDuration },
+  }, null, 2), "utf8");
+
+  run(process.execPath, [renderScript, edlPath, "--out", outPath]);
+  const probe = probeMedia(outPath);
+  assert.ok(
+    Math.abs(probe.duration - expectedDuration) < 0.2,
+    `expected ${expectedDuration}s, got ${probe.duration}s`,
+  );
+
+  run(process.execPath, [qaScript, outPath, "--edl", edlPath, "--out", qaPath]);
+  const qa = JSON.parse(readFileSync(qaPath, "utf8"));
+  assert.equal(qa.status, "pass");
+});
+
 test("render-edl rejects mixed source FPS before rendering", { skip: !hasFfmpeg }, () => {
   const dir = mkdtempSync(join(tmpdir(), "render-edl-fps-test-"));
   const part1 = join(dir, "part1.mp4");

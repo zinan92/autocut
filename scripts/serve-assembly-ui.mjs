@@ -23,6 +23,7 @@ const mime = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".mp4": "video/mp4",
   ".mov": "video/quicktime",
@@ -38,6 +39,8 @@ const sendJson = (res, status, value) => {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(value, null, 2));
 };
+
+const sendError = (res, status, error) => sendJson(res, status, { error: error.message });
 
 const sendStatic = (res, path) => {
   if (!existsSync(path)) {
@@ -87,27 +90,41 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/") return sendStatic(res, join(uiDir, "index.html"));
     if (url.pathname === "/app.css") return sendStatic(res, join(uiDir, "app.css"));
     if (url.pathname === "/app.js") return sendStatic(res, join(uiDir, "app.js"));
+    if (url.pathname === "/app-core.mjs") return sendStatic(res, join(uiDir, "app-core.mjs"));
 
     if (url.pathname === "/api/assembly" && req.method === "GET") {
       return sendJson(res, 200, readJson(assemblyPath));
     }
 
     if (url.pathname === "/api/assembly" && req.method === "POST") {
-      const baseAssembly = readJson(assemblyPath);
-      const proposedAssembly = JSON.parse(await readBody(req));
-      const assembly = applyAssemblyEdit(baseAssembly, proposedAssembly);
-      writeJson(assemblyPath, assembly);
-      return sendJson(res, 200, { ok: true, path: assemblyPath });
+      try {
+        const baseAssembly = readJson(assemblyPath);
+        const proposedAssembly = JSON.parse(await readBody(req));
+        const assembly = applyAssemblyEdit(baseAssembly, proposedAssembly);
+        writeJson(assemblyPath, assembly);
+        return sendJson(res, 200, { ok: true, path: assemblyPath });
+      } catch (error) {
+        return sendError(res, 400, error);
+      }
     }
 
     if (url.pathname === "/api/export" && req.method === "POST") {
-      const baseAssembly = readJson(assemblyPath);
-      const proposedAssembly = JSON.parse(await readBody(req));
-      const assembly = applyAssemblyEdit(baseAssembly, proposedAssembly);
-      writeJson(assemblyPath, assembly);
-      const edl = assemblyToEdl(assembly);
-      writeJson(edlPath, edl);
-      return sendJson(res, 200, { ok: true, path: edlPath, ranges: edl.ranges.length });
+      try {
+        const baseAssembly = readJson(assemblyPath);
+        const proposedAssembly = JSON.parse(await readBody(req));
+        const assembly = applyAssemblyEdit(baseAssembly, proposedAssembly);
+        writeJson(assemblyPath, assembly);
+        const edl = assemblyToEdl(assembly);
+        writeJson(edlPath, edl);
+        return sendJson(res, 200, {
+          ok: true,
+          path: edlPath,
+          ranges: edl.ranges.length,
+          duration: edl.metrics.outputDuration,
+        });
+      } catch (error) {
+        return sendError(res, 400, error);
+      }
     }
 
     if (url.pathname.startsWith("/media/")) {
@@ -117,7 +134,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(404);
     res.end("not found");
   } catch (error) {
-    sendJson(res, 500, { error: error.message });
+    sendError(res, 500, error);
   }
 });
 

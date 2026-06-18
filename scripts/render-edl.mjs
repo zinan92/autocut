@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { buildKeepRanges } from "../packages/edl/index.mjs";
@@ -13,7 +13,7 @@ const edlPath = args._[0] ?? args.edl;
 const outPath = args.out ?? "remotion-host-overlay-work/edit/cut.mp4";
 
 if (!edlPath) {
-  console.error("Usage: node scripts/render-edl.mjs <edl.json> [--out cut.mp4]");
+  console.error("Usage: node scripts/render-edl.mjs <edl.json> [--out cut.mp4] [--keep-temp]");
   process.exit(1);
 }
 
@@ -81,6 +81,10 @@ for (const range of ranges) {
 
 run("mkdir", ["-p", dirname(resolve(outPath))]);
 const targetFps = firstProbe.fps ?? String(firstProbe.fpsNumber);
+const expectedOutputDuration = ranges.reduce(
+  (sum, range) => sum + Number(range.end) - Number(range.start),
+  0,
+);
 
 if ((edl.deleteSegments ?? []).length === 0 && ranges.length === 1 && sourceIds.size === 1) {
   const range = ranges[0];
@@ -128,6 +132,7 @@ if ((edl.deleteSegments ?? []).length === 0 && ranges.length === 1 && sourceIds.
 const tmp = mkdtempSync(join(tmpdir(), "remotion-edl-"));
 const concatPath = join(tmp, "concat.txt");
 const partPaths = [];
+const keepTemp = args["keep-temp"] === true;
 
 for (let i = 0; i < ranges.length; i += 1) {
   const range = ranges[i];
@@ -184,12 +189,36 @@ run("ffmpeg", [
   "0",
   "-i",
   concatPath,
-  "-c",
-  "copy",
+  "-t",
+  expectedOutputDuration.toFixed(3),
+  "-vf",
+  "setsar=1,format=yuv420p",
+  "-r",
+  targetFps,
+  "-af",
+  "aresample=48000",
+  "-c:v",
+  "libx264",
+  "-preset",
+  "fast",
+  "-crf",
+  "20",
+  "-pix_fmt",
+  "yuv420p",
+  "-c:a",
+  "aac",
+  "-b:a",
+  "192k",
+  "-ar",
+  "48000",
+  "-ac",
+  "2",
   "-movflags",
   "+faststart",
   resolve(outPath),
 ], { stdio: "inherit" });
 
-readFileSync(concatPath, "utf8");
+if (!keepTemp) {
+  rmSync(tmp, { recursive: true, force: true });
+}
 console.log(`EDL render complete: ${resolve(outPath)}`);

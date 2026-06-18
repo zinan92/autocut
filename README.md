@@ -31,6 +31,7 @@ New capability layer:
 
 ```bash
 npm run ingest -- /path/to/video.mp4 --out ingest.json
+npm run proxy -- --manifest workflow/manifest.json --out-dir remotion-host-overlay-work/proxies --out-manifest workflow/manifest.proxy.json
 npm run transcribe -- --manifest workflows/host-overlay-v10/manifest.json
 npm run assembly:build -- --manifest workflows/host-overlay-v10/manifest.json
 npm run assembly:ui -- --assembly remotion-host-overlay-work/assembly/assembly.json
@@ -40,6 +41,24 @@ npm run qa -- remotion-host-overlay-work/assembly/clean-master.mp4 --edl remotio
 npm run pipeline -- workflow/manifest.json
 npm run storyboard:from-transcript -- --transcript /path/to/transcript.json --manifest workflow/manifest.json
 ```
+
+## Assembly Review UI
+
+M2 review flow:
+
+```bash
+npm run assembly:ui -- --assembly remotion-host-overlay-work/assembly/assembly.json --out remotion-host-overlay-work/assembly/edl.json --port 8898
+```
+
+Open `http://localhost:8898`.
+
+- Drag whole transcript blocks to reorder the virtual cut.
+- Click a block to jump the preview player to that source/start time.
+- Use `Delete` and `Restore` to remove or bring back blocks without changing source metadata.
+- Use `Play Assembly` to preview the active block queue in current order.
+- Use `Save` to persist `assembly.json`.
+- Use `Export EDL` to write a multi-source `edl.json`; dragging and previewing do not render MP4.
+- V1/M2 only allows block reorder/delete/restore. Text, source, start/end, hash, and group are immutable.
 
 For a single source with an existing transcript cache:
 
