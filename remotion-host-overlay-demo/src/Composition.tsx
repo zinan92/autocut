@@ -12,10 +12,21 @@ import {
 } from "remotion";
 import storyboard from "./storyboard.json";
 
+type StoryboardVideo = typeof storyboard.video & {
+  mediaStart?: number;
+  timelineStart?: number;
+  timelineDuration?: number;
+};
+
+const storyboardVideo = storyboard.video as StoryboardVideo;
 const captions = storyboard.captions;
 const phases = storyboard.phases;
-const chapters = storyboard.video.chapters;
-export const videoDuration = storyboard.video.duration;
+const chapters = storyboardVideo.chapters;
+export const videoDuration = storyboardVideo.duration;
+const fps = 30;
+const mediaStartFrame = Math.round((storyboardVideo.mediaStart ?? 0) * fps);
+const timelineStart = storyboardVideo.timelineStart ?? 0;
+const timelineDuration = storyboardVideo.timelineDuration ?? videoDuration;
 const skillRows = storyboard.shortSkillBoard;
 const referenceSkillRows = storyboard.referenceSkillBoard;
 const attentionTimeline = storyboard.attentionTimeline;
@@ -52,6 +63,9 @@ const useSeconds = () => {
   const { fps } = useVideoConfig();
   return frame / fps;
 };
+
+const timelineProgress = (second: number) =>
+  clamp((timelineStart + second) / Math.max(0.1, timelineDuration));
 
 const enter = (second: number, start: number, duration = 0.55) =>
   interpolate(second, [start, start + duration], [0, 1], {
@@ -229,6 +243,7 @@ const HostVideo = () => {
         src={staticFile("host.mp4")}
         className="host-video"
         muted={false}
+        trimBefore={mediaStartFrame}
       />
     </AbsoluteFill>
   );
@@ -241,11 +256,13 @@ const LandscapeHostVideo = () => {
         src={staticFile("host.mp4")}
         className="landscape-bg-video"
         muted
+        trimBefore={mediaStartFrame}
       />
       <OffthreadVideo
         src={staticFile("host.mp4")}
         className="landscape-person-video"
         muted={false}
+        trimBefore={mediaStartFrame}
       />
       <div className="landscape-person-shadow" />
     </AbsoluteFill>
@@ -254,11 +271,17 @@ const LandscapeHostVideo = () => {
 
 const RefHostVideo = () => (
   <AbsoluteFill>
-    <OffthreadVideo src={staticFile("host.mp4")} className="ref-bg-video" muted />
+    <OffthreadVideo
+      src={staticFile("host.mp4")}
+      className="ref-bg-video"
+      muted
+      trimBefore={mediaStartFrame}
+    />
     <OffthreadVideo
       src={staticFile("host.mp4")}
       className="ref-person-video"
       muted={false}
+      trimBefore={mediaStartFrame}
     />
     <div className="ref-person-mask" />
   </AbsoluteFill>
@@ -704,7 +727,7 @@ const RefCaption = ({ caption }: { caption: (typeof captions)[number] }) => {
 };
 
 const RefLowerNav = ({ second }: { second: number }) => {
-  const progress = clamp(second / videoDuration);
+  const progress = timelineProgress(second);
 
   return (
     <div className="ref-lower-nav">
@@ -817,7 +840,7 @@ const LandscapeStatColumn = ({ phase }: { phase: (typeof phases)[number] }) => {
 };
 
 const LandscapeTimeline = ({ second }: { second: number }) => {
-  const progress = clamp(second / videoDuration);
+  const progress = timelineProgress(second);
   const opacity = enter(second, 13, 0.45);
   const y = interpolate(opacity, [0, 1], [24, 0]);
 
@@ -853,7 +876,7 @@ const LandscapeCaption = ({ caption }: { caption: (typeof captions)[number] }) =
 };
 
 const LandscapeLowerNav = ({ second }: { second: number }) => {
-  const progress = clamp(second / videoDuration);
+  const progress = timelineProgress(second);
 
   return (
     <div className="landscape-lower-nav">
@@ -1005,7 +1028,7 @@ const CaptionLayer = ({ caption }: { caption: (typeof captions)[number] }) => {
 };
 
 const ChapterBar = ({ second }: { second: number }) => {
-  const progress = clamp(second / videoDuration);
+  const progress = timelineProgress(second);
 
   return (
     <div className="chapter-bar">
