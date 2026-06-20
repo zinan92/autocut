@@ -26,7 +26,10 @@
   "render": {
     "codec": "h264",
     "crf": 18,
-    "concurrency": 2
+    "concurrency": 2,
+    "autoSegmentLongVideos": true,
+    "segmentThresholdSeconds": 300,
+    "segmentSeconds": 60
   },
   "delivery": {
     "crf": 18,

@@ -205,15 +205,19 @@ test("pipeline uses multi-source assembly path for sources manifests", { skip: !
     manifestPath,
     "--session",
     sessionDir,
-    "--render-edl",
+    "--prepare-overlay",
   ]);
 
   const assemblyPath = join(sessionDir, "assembly", "assembly.json");
   const edlPath = join(sessionDir, "edl.json");
   const cutPath = join(sessionDir, "cut.mp4");
+  const overlayManifestPath = join(sessionDir, "overlay", "manifest.json");
+  const overlayStoryboardPath = join(sessionDir, "overlay", "storyboard.json");
   assert.equal(existsSync(assemblyPath), true);
   assert.equal(existsSync(edlPath), true);
   assert.equal(existsSync(cutPath), true);
+  assert.equal(existsSync(overlayManifestPath), true);
+  assert.equal(existsSync(overlayStoryboardPath), true);
 
   const edl = JSON.parse(readFileSync(edlPath, "utf8"));
   assert.deepEqual(edl.ranges.map((range) => range.source), [
@@ -222,4 +226,10 @@ test("pipeline uses multi-source assembly path for sources manifests", { skip: !
     "part3",
     "part2",
   ]);
+  const summary = JSON.parse(readFileSync(join(sessionDir, "pipeline-summary.json"), "utf8"));
+  assert.equal(summary.overlayManifestPath, overlayManifestPath);
+  assert.equal(
+    summary.steps.some((step) => step.step === "overlay-prepare" && step.status === "done"),
+    true,
+  );
 });

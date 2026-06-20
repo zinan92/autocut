@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveRenderPlan } from "../packages/render-policy/index.mjs";
 import { windowStoryboard } from "../packages/storyboard/windowing.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -59,14 +60,6 @@ const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 const writeJson = (path, value) => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
-};
-
-const numberOption = (value, fallback) => {
-  if (value === undefined || value === null || value === "") {
-    return fallback;
-  }
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
 };
 
 if (!existsSync(manifestPath)) {
@@ -120,32 +113,27 @@ if (typeof storyboardDuration !== "number" || storyboardDuration <= 0) {
   process.exit(1);
 }
 
-const previewSeconds = numberOption(
-  getFlagValue("--preview-seconds"),
-  numberOption(manifest.render?.previewSeconds, null),
-);
-const segmentedRender =
-  hasFlag("--segment-render") || manifest.render?.segmented === true;
-const segmentSeconds = numberOption(
-  getFlagValue("--segment-seconds"),
-  numberOption(
-    manifest.render?.segmentSeconds,
-    sourceStoryboard.longVideoPolicy?.segmentLengthSeconds ?? 120,
-  ),
-);
-const longRenderThresholdSeconds = numberOption(
-  getFlagValue("--long-render-threshold-seconds"),
-  numberOption(manifest.render?.longRenderThresholdSeconds, 10 * 60),
-);
-const allowLongRender =
-  hasFlag("--allow-long-render") || manifest.render?.allowLongRender === true;
+const renderPlan = resolveRenderPlan({
+  manifest,
+  storyboard: sourceStoryboard,
+  cli: {
+    previewSeconds: getFlagValue("--preview-seconds"),
+    segmentRender: hasFlag("--segment-render"),
+    segmentSeconds: getFlagValue("--segment-seconds"),
+    segmentThresholdSeconds: getFlagValue("--segment-threshold-seconds"),
+    longRenderThresholdSeconds: getFlagValue("--long-render-threshold-seconds"),
+    allowLongRender: hasFlag("--allow-long-render"),
+  },
+});
+const {
+  effectivePreviewSeconds,
+  effectiveRenderDuration,
+  segmentedRender,
+  segmentSeconds,
+  longRenderThresholdSeconds,
+} = renderPlan;
 
-if (
-  storyboardDuration > longRenderThresholdSeconds &&
-  !allowLongRender &&
-  !previewSeconds &&
-  !segmentedRender
-) {
+if (renderPlan.shouldRefuseLongRender) {
   console.error(
     [
       `Refusing full Remotion render for ${storyboardDuration.toFixed(1)}s video.`,
@@ -158,11 +146,6 @@ if (
   process.exit(1);
 }
 
-const effectivePreviewSeconds =
-  previewSeconds && previewSeconds > 0
-    ? Math.min(previewSeconds, storyboardDuration)
-    : null;
-const effectiveRenderDuration = effectivePreviewSeconds ?? storyboardDuration;
 const baseRenderName = effectivePreviewSeconds
   ? `${projectName}-preview-${Math.round(effectivePreviewSeconds)}s`
   : projectName;
@@ -187,6 +170,9 @@ const contactSheetPath = join(
   frameDir,
   `${renderName}-${outputOrientation}-contact-sheet.png`,
 );
+const renderReportPath = getFlagValue("--report")
+  ? resolve(workspaceDir, getFlagValue("--report"))
+  : null;
 const publicHostPath = join(projectDir, "public", "host.mp4");
 
 copyFileSync(sourceVideo, publicHostPath);
@@ -260,7 +246,7 @@ const renderRaw = ({ storyboard, rawOutput }) => {
   );
 };
 
-const encodeDelivery = ({ input, output }) => {
+const encodeDelivery = ({ input, output, duration }) => {
   run(
     "ffmpeg",
     [
@@ -270,6 +256,7 @@ const encodeDelivery = ({ input, output }) => {
       "-vf",
       deliveryVideoFilter,
       ...deliveryEncodingArgs(),
+      ...(Number.isFinite(duration) ? ["-t", String(Number(duration.toFixed(3)))] : []),
       output,
     ],
     { cwd: workspaceDir, stdio: "inherit" },
@@ -391,7 +378,11 @@ const renderSegmented = () => {
       `Rendering ${segmentLabel}: ${segment.start.toFixed(2)}-${segment.end.toFixed(2)}s`,
     );
     renderRaw({ storyboard: segmentStoryboardPath, rawOutput: segmentRawPath });
-    encodeDelivery({ input: segmentRawPath, output: segmentOutputPath });
+    encodeDelivery({
+      input: segmentRawPath,
+      output: segmentOutputPath,
+      duration: segment.duration,
+    });
     renderedSegments.push({
       ...segment,
       storyboard: segmentStoryboardPath,
@@ -450,6 +441,11 @@ if (effectivePreviewSeconds) {
 }
 if (segmentedRender) {
   console.log(`Segmented render: ${segmentSeconds.toFixed(2)}s segments`);
+  if (renderPlan.autoSegmented) {
+    console.log(
+      `Auto-segmented because storyboard duration exceeds ${renderPlan.segmentThresholdSeconds.toFixed(2)}s`,
+    );
+  }
 }
 if (!segmentedRender && resolve(effectiveStoryboardPath) !== resolve(projectStoryboardPath)) {
   console.log(`Copied storyboard to: ${projectStoryboardPath}`);
@@ -461,7 +457,11 @@ const { reportPath, renderedProbe } = segmentedRender
   ? renderSegmented()
   : (() => {
       renderRaw({ storyboard: effectiveStoryboardPath, rawOutput: rawOutputPath });
-      encodeDelivery({ input: rawOutputPath, output: outputPath });
+      encodeDelivery({
+        input: rawOutputPath,
+        output: outputPath,
+        duration: effectiveRenderDuration,
+      });
       writeContactSheet({
         input: outputPath,
         duration: effectiveRenderDuration,
@@ -469,6 +469,7 @@ const { reportPath, renderedProbe } = segmentedRender
       });
       return { reportPath: null, renderedProbe: probeOutput(outputPath) };
     })();
+const renderedProbeJson = JSON.parse(renderedProbe);
 
 if (manifest.qa?.openAfterRender !== false) {
   run("open", [outputPath], { stdio: "inherit" });
@@ -483,7 +484,31 @@ console.log(`Contact sheet: ${contactSheetPath}`);
 if (reportPath) {
   console.log(`Segment report: ${reportPath}`);
 }
+if (renderReportPath) {
+  writeJson(renderReportPath, {
+    projectName,
+    manifestPath,
+    sourceVideo,
+    storyboardPath,
+    composition,
+    output: outputPath,
+    raw: segmentedRender ? null : rawOutputPath,
+    contactSheet: contactSheetPath,
+    segmentReport: reportPath,
+    orientation: outputOrientation,
+    deliverySize,
+    renderMode: renderPlan.renderMode,
+    segmented: segmentedRender,
+    autoSegmented: renderPlan.autoSegmented,
+    previewSeconds: effectivePreviewSeconds,
+    segmentSeconds: segmentedRender ? segmentSeconds : null,
+    storyboardDuration,
+    renderedDuration: effectiveRenderDuration,
+    probe: renderedProbeJson,
+  });
+  console.log(`Render report: ${renderReportPath}`);
+}
 console.log(
   `Delivery metadata for Telegram/API upload: width=${deliverySize.width}, height=${deliverySize.height}, aspect=${deliverySize.aspect}`,
 );
-console.log(renderedProbe);
+console.log(JSON.stringify(renderedProbeJson, null, 2));

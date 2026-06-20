@@ -44,10 +44,20 @@
     "targetLengthMinutes": "5-10",
     "preserveOriginalOrder": true
   },
+  "lengthPolicy": {
+    "defaultRangeMinutes": "5-10",
+    "singleCompositionMaxMinutes": 10,
+    "segmentLengthSeconds": 60,
+    "maxSegmentLengthSeconds": 120,
+    "visualBeatEverySeconds": 20
+  },
   "render": {
     "codec": "h264",
     "crf": 18,
-    "concurrency": 2
+    "concurrency": 2,
+    "autoSegmentLongVideos": true,
+    "segmentThresholdSeconds": 300,
+    "segmentSeconds": 60
   },
   "delivery": {
     "crf": 18,

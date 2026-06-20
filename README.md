@@ -40,6 +40,7 @@ npm run edl:render -- remotion-host-overlay-work/assembly/edl.json --out remotio
 npm run qa -- remotion-host-overlay-work/assembly/clean-master.mp4 --edl remotion-host-overlay-work/assembly/edl.json
 npm run overlay:prepare -- --video remotion-host-overlay-work/assembly/clean-master.mp4 --edl remotion-host-overlay-work/assembly/edl.json --out-dir remotion-host-overlay-work/overlay --project-name my-overlay
 npm run pipeline -- workflow/manifest.json
+npm run pipeline -- workflows/host-overlay-v10/manifest.json --render-overlay --preview-seconds 60
 npm run storyboard:from-transcript -- --transcript /path/to/transcript.json --manifest workflow/manifest.json
 ```
 
@@ -77,6 +78,29 @@ node scripts/render-workflow.mjs remotion-host-overlay-work/overlay/manifest.jso
 ```
 
 `overlay:prepare` fails if the EDL duration does not match the clean master duration. If you edit/export a new EDL in the review UI, render a new clean master before preparing the Remotion overlay.
+
+## One-Command Overlay Pipeline
+
+M5 connects clean-master assembly and Remotion overlay rendering:
+
+```bash
+npm run pipeline -- workflows/host-overlay-v10/manifest.json --render-overlay --preview-seconds 60
+```
+
+This command builds assembly, exports EDL, renders the clean master, prepares the overlay manifest, and renders a preview overlay. For production, remove `--preview-seconds`; manifests default to auto-segmenting videos longer than 5 minutes into 60-second Remotion renders:
+
+```bash
+npm run pipeline -- workflows/host-overlay-v10/manifest.json --render-overlay
+```
+
+Pipeline session outputs include:
+
+- `pipeline-summary.json`
+- `edl.json`
+- `cut.mp4`
+- `overlay/manifest.json`
+- `overlay/storyboard.json`
+- `overlay-render-report.json`
 
 For a single source with an existing transcript cache:
 

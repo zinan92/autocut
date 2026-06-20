@@ -22,6 +22,47 @@ const sessionDir = resolve(
 );
 mkdirSync(sessionDir, { recursive: true });
 
+const shouldPrepareOverlay =
+  args.overlay === true ||
+  args["prepare-overlay"] === true ||
+  args["render-overlay"] === true;
+const shouldRenderOverlay = args["render-overlay"] === true;
+const shouldRenderEdl = args["render-edl"] === true || shouldPrepareOverlay;
+
+const renderWorkflowArgs = (renderManifestPath, reportPath) => {
+  const renderArgs = ["scripts/render-workflow.mjs", renderManifestPath];
+  const valueFlags = [
+    "preview-seconds",
+    "segment-seconds",
+    "segment-threshold-seconds",
+    "long-render-threshold-seconds",
+  ];
+  const booleanFlags = ["segment-render", "allow-long-render"];
+
+  for (const flag of valueFlags) {
+    if (args[flag] !== undefined && args[flag] !== true) {
+      renderArgs.push(`--${flag}`, String(args[flag]));
+    }
+  }
+
+  for (const flag of booleanFlags) {
+    if (args[flag] === true) {
+      renderArgs.push(`--${flag}`);
+    }
+  }
+
+  if (reportPath) {
+    renderArgs.push("--report", reportPath);
+  }
+
+  return renderArgs;
+};
+
+const runRemotionRender = (renderManifestPath, reportPath) => {
+  run("node", renderWorkflowArgs(renderManifestPath, reportPath), { stdio: "inherit" });
+  return existsSync(reportPath) ? readJson(reportPath) : null;
+};
+
 const steps = [
   { step: "ingest", status: "pending", output: join(sessionDir, "ingest.json") },
 ];
@@ -29,6 +70,9 @@ const steps = [
 const hasMultiSourceManifest = Array.isArray(manifest.sources) && manifest.sources.length > 0;
 let sourceVideo = null;
 let ingest = null;
+let edlPath = null;
+let cutPath = null;
+let overlayManifestPath = null;
 
 if (hasMultiSourceManifest) {
   const sources = resolveManifestSources(manifest, manifestPath);
@@ -45,7 +89,9 @@ if (hasMultiSourceManifest) {
   writeJson(join(sessionDir, "ingest.json"), ingest);
   steps[0] = { ...steps[0], status: "done" };
 
-  const missingTranscript = sources.find((source) => !source.transcriptPath || !existsSync(source.transcriptPath));
+  const missingTranscript = sources.find(
+    (source) => !source.transcriptPath || !existsSync(source.transcriptPath),
+  );
   if (missingTranscript) {
     steps.push({
       step: "assembly",
@@ -54,7 +100,7 @@ if (hasMultiSourceManifest) {
     });
   } else {
     const assemblyDir = join(sessionDir, "assembly");
-    const edlPath = join(sessionDir, "edl.json");
+    edlPath = join(sessionDir, "edl.json");
     run("node", [
       "scripts/build-assembly.mjs",
       "--manifest",
@@ -77,8 +123,8 @@ if (hasMultiSourceManifest) {
     ], { stdio: "inherit" });
     steps.push({ step: "multi-source-edl", status: "done", output: edlPath });
 
-    if (args["render-edl"]) {
-      const cutPath = join(sessionDir, "cut.mp4");
+    if (shouldRenderEdl) {
+      cutPath = join(sessionDir, "cut.mp4");
       run("node", ["scripts/render-edl.mjs", edlPath, "--out", cutPath], {
         stdio: "inherit",
       });
@@ -99,42 +145,42 @@ if (hasMultiSourceManifest) {
       : null);
 
   if (transcriptPath && existsSync(transcriptPath)) {
-  const edlPath = join(sessionDir, "edl.json");
-  run("node", [
-    "scripts/build-edl.mjs",
-    sourceVideo,
-    "--transcript",
-    transcriptPath,
-    "--out",
-    edlPath,
-    "--silence-threshold",
-    String(manifest.autocut?.silenceThresholdSec ?? 0.5),
-    "--filler-mode",
-    manifest.autocut?.fillerMode ?? "mark",
-  ], { stdio: "inherit" });
-  steps.push({ step: "autocut-edl", status: "done", output: edlPath });
-
-  if (args["render-edl"]) {
-    const cutPath = join(sessionDir, "cut.mp4");
-    run("node", ["scripts/render-edl.mjs", edlPath, "--out", cutPath], {
-      stdio: "inherit",
-    });
-    steps.push({ step: "edl-render", status: "done", output: cutPath });
-  }
-
-  if (args.storyboard) {
-    const storyboardPath = join(sessionDir, "storyboard.json");
+    edlPath = join(sessionDir, "edl.json");
     run("node", [
-      "scripts/generate-storyboard-from-transcript.mjs",
+      "scripts/build-edl.mjs",
+      sourceVideo,
       "--transcript",
       transcriptPath,
-      "--manifest",
-      manifestPath,
       "--out",
-      storyboardPath,
+      edlPath,
+      "--silence-threshold",
+      String(manifest.autocut?.silenceThresholdSec ?? 0.5),
+      "--filler-mode",
+      manifest.autocut?.fillerMode ?? "mark",
     ], { stdio: "inherit" });
-    steps.push({ step: "storyboard", status: "done", output: storyboardPath });
-  }
+    steps.push({ step: "autocut-edl", status: "done", output: edlPath });
+
+    if (shouldRenderEdl) {
+      cutPath = join(sessionDir, "cut.mp4");
+      run("node", ["scripts/render-edl.mjs", edlPath, "--out", cutPath], {
+        stdio: "inherit",
+      });
+      steps.push({ step: "edl-render", status: "done", output: cutPath });
+    }
+
+    if (args.storyboard) {
+      const storyboardPath = join(sessionDir, "storyboard.json");
+      run("node", [
+        "scripts/generate-storyboard-from-transcript.mjs",
+        "--transcript",
+        transcriptPath,
+        "--manifest",
+        manifestPath,
+        "--out",
+        storyboardPath,
+      ], { stdio: "inherit" });
+      steps.push({ step: "storyboard", status: "done", output: storyboardPath });
+    }
   } else {
     steps.push({
       step: "transcribe",
@@ -144,9 +190,71 @@ if (hasMultiSourceManifest) {
   }
 }
 
+if (shouldPrepareOverlay) {
+  if (!edlPath || !cutPath || !existsSync(cutPath)) {
+    steps.push({
+      step: "overlay-prepare",
+      status: "blocked",
+      reason: "Overlay preparation requires a rendered clean master. Run with --render-edl or --render-overlay.",
+    });
+  } else {
+    const overlayDir = resolve(args["overlay-dir"] ?? join(sessionDir, "overlay"));
+    overlayManifestPath = join(overlayDir, "manifest.json");
+    const overlayStoryboardPath = join(overlayDir, "storyboard.json");
+    run("node", [
+      "scripts/prepare-overlay-workflow.mjs",
+      "--video",
+      cutPath,
+      "--edl",
+      edlPath,
+      "--manifest",
+      manifestPath,
+      "--out-dir",
+      overlayDir,
+      "--project-name",
+      `${projectName}-overlay`,
+    ], { stdio: "inherit" });
+    steps.push({
+      step: "overlay-prepare",
+      status: "done",
+      output: overlayManifestPath,
+      storyboard: overlayStoryboardPath,
+    });
+  }
+}
+
+if (shouldRenderOverlay) {
+  if (!overlayManifestPath || !existsSync(overlayManifestPath)) {
+    steps.push({
+      step: "remotion-overlay-render",
+      status: "blocked",
+      reason: "Overlay manifest missing. Prepare overlay before rendering.",
+    });
+  } else {
+    const reportPath = join(sessionDir, "overlay-render-report.json");
+    const report = runRemotionRender(overlayManifestPath, reportPath);
+    steps.push({
+      step: "remotion-overlay-render",
+      status: "done",
+      output: report?.output ?? null,
+      report: reportPath,
+      segmentReport: report?.segmentReport ?? null,
+      renderMode: report?.renderMode ?? null,
+    });
+  }
+}
+
 if (args.render) {
-  run("node", ["scripts/render-workflow.mjs", manifestPath], { stdio: "inherit" });
-  steps.push({ step: "remotion-render", status: "done" });
+  const reportPath = join(sessionDir, "render-report.json");
+  const report = runRemotionRender(manifestPath, reportPath);
+  steps.push({
+    step: "remotion-render",
+    status: "done",
+    output: report?.output ?? null,
+    report: reportPath,
+    segmentReport: report?.segmentReport ?? null,
+    renderMode: report?.renderMode ?? null,
+  });
 }
 
 const summary = {
@@ -155,6 +263,9 @@ const summary = {
   sourceVideo,
   orientation: ingest.orientation,
   duration: ingest.duration,
+  edlPath,
+  cutPath,
+  overlayManifestPath,
   steps,
 };
 writeJson(join(sessionDir, "pipeline-summary.json"), summary);
