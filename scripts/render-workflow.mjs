@@ -9,7 +9,10 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveRenderPlan } from "../packages/render-policy/index.mjs";
+import {
+  buildRenderSegments,
+  resolveRenderPlan,
+} from "../packages/render-policy/index.mjs";
 import { windowStoryboard } from "../packages/storyboard/windowing.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -337,27 +340,12 @@ const probeOutput = (path) =>
     path,
   ]);
 
-const buildSegments = (duration, length) => {
-  const segmentLength = Number.isFinite(length) && length > 0 ? length : 120;
-  const segments = [];
-  for (let start = 0; start < duration - 0.001; start += segmentLength) {
-    const end = Math.min(duration, start + segmentLength);
-    segments.push({
-      index: segments.length + 1,
-      start: Number(start.toFixed(3)),
-      end: Number(end.toFixed(3)),
-      duration: Number((end - start).toFixed(3)),
-    });
-  }
-  return segments;
-};
-
 const concatFileLine = (file) => `file '${file.replaceAll("'", "'\\''")}'`;
 
 const renderSegmented = () => {
   const segmentDir = join(renderDir, "segments", `${renderName}-${outputOrientation}`);
   mkdirSync(segmentDir, { recursive: true });
-  const segments = buildSegments(effectiveRenderDuration, segmentSeconds);
+  const segments = buildRenderSegments(effectiveRenderDuration, segmentSeconds);
   const renderedSegments = [];
 
   for (const segment of segments) {
